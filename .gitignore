@@ -1,0 +1,4 @@
+bin/pdfs/*
+*.class
+orb.db
+bin/

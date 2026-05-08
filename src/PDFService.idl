@@ -1,0 +1,92 @@
+module PDFService {
+
+    // Exception personnalisée
+    exception PDFException {
+        string message;
+    };
+
+    // Structure pour retourner des infos sur un PDF
+    struct InfosPDF {
+        string nomFichier;
+        long nombrePages;
+        string auteur;
+        string titre;
+        long tailleFichier;
+    };
+
+    // Séquence d'octets pour transférer les fichiers PDF en binaire
+    typedef sequence<octet> Fichier;
+
+    // Séquence de strings pour les pages de texte
+    typedef sequence<string> ListeTextes;
+
+    // Séquence d'entiers pour les numéros de pages
+    typedef sequence<long> ListePages;
+
+    interface GestionnairePDF {
+
+        // 1. Obtenir les infos d'un PDF
+        InfosPDF getInfos(in string nomFichier)
+            raises (PDFException);
+
+        // 2. Fusion de plusieurs PDFs en un seul
+        Fichier fusionner(in string nom1, in string nom2, in string nomResultat)
+            raises (PDFException);
+
+        // 3. Découpage : extraire certaines pages d'un PDF
+        Fichier extrairePages(in string nomFichier, in long pageDebut, in long pageFin, in string nomResultat)
+            raises (PDFException);
+
+        // 4. Suppression de pages
+        Fichier supprimerPages(in string nomFichier, in ListePages pages, in string nomResultat)
+            raises (PDFException);
+
+        // 5. Ajout de texte sur une page
+        Fichier ajouterTexte(in string nomFichier, in string texte, in long page, in float x, in float y, in string nomResultat)
+            raises (PDFException);
+
+        // 6. Conversion PDF vers images (retourne les noms des images générées)
+        ListeTextes convertirEnImages(in string nomFichier, in long dpi)
+            raises (PDFException);
+
+        // 7. Extraction de texte de toutes les pages
+        ListeTextes extraireTexte(in string nomFichier)
+            raises (PDFException);
+
+        // 8. Création d'un PDF depuis du texte
+        Fichier creerPDF(in string texte, in string nomResultat)
+            raises (PDFException);
+
+        // 9. Upload d'un fichier PDF vers le serveur
+        boolean uploadFichier(in string nomFichier, in Fichier contenu)
+            raises (PDFException);
+
+        // 10. Download d'un fichier PDF depuis le serveur
+        Fichier downloadFichier(in string nomFichier)
+            raises (PDFException);
+
+        // 11. Lister les fichiers disponibles sur le serveur
+        ListeTextes listerFichiers()
+            raises (PDFException);
+
+        // 12. Rotation de pages
+        Fichier rotationPages(in string nomFichier, in ListePages pages, in long angle, in string nomResultat)
+            raises (PDFException);
+
+        // 13. Protection par mot de passe
+        Fichier protegerPDF(in string nomFichier, in string motDePasse, in string nomResultat)
+            raises (PDFException);
+
+        // 14. Compression PDF
+        Fichier compresserPDF(in string nomFichier, in string nomResultat)
+            raises (PDFException);
+
+        // 15. Numérotation des pages
+        Fichier numeroterPages(in string nomFichier, in string nomResultat)
+            raises (PDFException);
+
+        // 16. Aperçu : convertir une page en image base64
+        string apercuPage(in string nomFichier, in long page)
+            raises (PDFException);
+    };
+};
