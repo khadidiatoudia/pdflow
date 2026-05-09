@@ -52,7 +52,7 @@ public class StartServer {
         server.createContext("/", exchange -> {
             String path = exchange.getRequestURI().getPath();
             if (path.equals("/") || path.equals("/index.html")) {
-                servirFichierStatique(exchange, "/home/khadija/TP_CORBA_PDF/web/index.html", "text/html");
+                servirFichierStatique(exchange, "/app/web/index.html", "text/html");
             } else if (path.startsWith("/api/")) {
                 traiterAPI(exchange);
             } else {
