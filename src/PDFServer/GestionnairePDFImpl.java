@@ -18,6 +18,12 @@ import java.util.*;
 
 public class GestionnairePDFImpl extends GestionnairePDFPOA {
 
+    public void setDossier(String dossier) {
+        // Changer le dossier courant pour l'utilisateur connecté
+        DOSSIER_COURANT = dossier;
+        new java.io.File(dossier).mkdirs();
+    }
+
     private static String initDossier() {
         // Essayer /pdfs d'abord, sinon utiliser un dossier local
         java.io.File f1 = new java.io.File("/pdfs");
@@ -29,12 +35,13 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
 
 
     private static final String DOSSIER_PDF = initDossier();
+    private String DOSSIER_COURANT = DOSSIER_PDF;
 
     // 1. Infos PDF
     @Override
     public InfosPDF getInfos(String nomFichier) throws PDFException {
         try {
-            File f = new File(DOSSIER_PDF + nomFichier);
+            File f = new File(DOSSIER_COURANT + nomFichier);
             if (!f.exists()) throw new PDFException("Fichier introuvable : " + nomFichier);
             PDDocument doc = PDDocument.load(f);
             PDDocumentInformation info = doc.getDocumentInformation();
@@ -56,12 +63,12 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
     public byte[] fusionner(String nom1, String nom2, String nomResultat) throws PDFException {
         try {
             PDFMergerUtility merger = new PDFMergerUtility();
-            merger.addSource(new File(DOSSIER_PDF + nom1));
-            merger.addSource(new File(DOSSIER_PDF + nom2));
-            merger.setDestinationFileName(DOSSIER_PDF + nomResultat);
+            merger.addSource(new File(DOSSIER_COURANT + nom1));
+            merger.addSource(new File(DOSSIER_COURANT + nom2));
+            merger.setDestinationFileName(DOSSIER_COURANT + nomResultat);
             merger.mergeDocuments(null);
             System.out.println("[SERVEUR] Fusion : " + nom1 + " + " + nom2);
-            return lireFichier(DOSSIER_PDF + nomResultat);
+            return lireFichier(DOSSIER_COURANT + nomResultat);
         } catch (Exception e) { throw new PDFException("Erreur fusion : " + e.getMessage()); }
     }
 
@@ -69,14 +76,14 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
     @Override
     public byte[] extrairePages(String nomFichier, int pageDebut, int pageFin, String nomResultat) throws PDFException {
         try {
-            PDDocument source = PDDocument.load(new File(DOSSIER_PDF + nomFichier));
+            PDDocument source = PDDocument.load(new File(DOSSIER_COURANT + nomFichier));
             PDDocument resultat = new PDDocument();
             for (int i = pageDebut - 1; i < pageFin && i < source.getNumberOfPages(); i++)
                 resultat.addPage(source.getPage(i));
-            resultat.save(DOSSIER_PDF + nomResultat);
+            resultat.save(DOSSIER_COURANT + nomResultat);
             resultat.close(); source.close();
             System.out.println("[SERVEUR] ExtrairePages : " + pageDebut + "-" + pageFin);
-            return lireFichier(DOSSIER_PDF + nomResultat);
+            return lireFichier(DOSSIER_COURANT + nomResultat);
         } catch (Exception e) { throw new PDFException("Erreur extrairePages : " + e.getMessage()); }
     }
 
@@ -84,16 +91,16 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
     @Override
     public byte[] supprimerPages(String nomFichier, int[] pages, String nomResultat) throws PDFException {
         try {
-            PDDocument source = PDDocument.load(new File(DOSSIER_PDF + nomFichier));
+            PDDocument source = PDDocument.load(new File(DOSSIER_COURANT + nomFichier));
             PDDocument resultat = new PDDocument();
             Set<Integer> aSupprimer = new HashSet<>();
             for (int p : pages) aSupprimer.add(p);
             for (int i = 0; i < source.getNumberOfPages(); i++)
                 if (!aSupprimer.contains(i + 1)) resultat.addPage(source.getPage(i));
-            resultat.save(DOSSIER_PDF + nomResultat);
+            resultat.save(DOSSIER_COURANT + nomResultat);
             resultat.close(); source.close();
             System.out.println("[SERVEUR] SupprimerPages : " + pages.length + " pages");
-            return lireFichier(DOSSIER_PDF + nomResultat);
+            return lireFichier(DOSSIER_COURANT + nomResultat);
         } catch (Exception e) { throw new PDFException("Erreur supprimerPages : " + e.getMessage()); }
     }
 
@@ -101,7 +108,7 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
     @Override
     public byte[] ajouterTexte(String nomFichier, String texte, int page, float x, float y, String nomResultat) throws PDFException {
         try {
-            PDDocument doc = PDDocument.load(new File(DOSSIER_PDF + nomFichier));
+            PDDocument doc = PDDocument.load(new File(DOSSIER_COURANT + nomFichier));
             PDPage pdPage = doc.getPage(page - 1);
             PDPageContentStream cs = new PDPageContentStream(doc, pdPage, PDPageContentStream.AppendMode.APPEND, true);
             cs.beginText();
@@ -110,10 +117,10 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
             cs.showText(texte);
             cs.endText();
             cs.close();
-            doc.save(DOSSIER_PDF + nomResultat);
+            doc.save(DOSSIER_COURANT + nomResultat);
             doc.close();
             System.out.println("[SERVEUR] AjouterTexte page " + page);
-            return lireFichier(DOSSIER_PDF + nomResultat);
+            return lireFichier(DOSSIER_COURANT + nomResultat);
         } catch (Exception e) { throw new PDFException("Erreur ajouterTexte : " + e.getMessage()); }
     }
 
@@ -121,13 +128,13 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
     @Override
     public String[] convertirEnImages(String nomFichier, int dpi) throws PDFException {
         try {
-            PDDocument doc = PDDocument.load(new File(DOSSIER_PDF + nomFichier));
+            PDDocument doc = PDDocument.load(new File(DOSSIER_COURANT + nomFichier));
             PDFRenderer renderer = new PDFRenderer(doc);
             List<String> noms = new ArrayList<>();
             for (int i = 0; i < doc.getNumberOfPages(); i++) {
                 BufferedImage img = renderer.renderImageWithDPI(i, dpi);
                 String nomImg = nomFichier.replace(".pdf", "") + "_page" + (i + 1) + ".png";
-                ImageIO.write(img, "PNG", new File(DOSSIER_PDF + nomImg));
+                ImageIO.write(img, "PNG", new File(DOSSIER_COURANT + nomImg));
                 noms.add(nomImg);
             }
             doc.close();
@@ -140,7 +147,7 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
     @Override
     public String[] extraireTexte(String nomFichier) throws PDFException {
         try {
-            PDDocument doc = PDDocument.load(new File(DOSSIER_PDF + nomFichier));
+            PDDocument doc = PDDocument.load(new File(DOSSIER_COURANT + nomFichier));
             PDFTextStripper stripper = new PDFTextStripper();
             List<String> pages = new ArrayList<>();
             for (int i = 1; i <= doc.getNumberOfPages(); i++) {
@@ -170,10 +177,10 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
                 cs.showText(l); cs.newLine();
             }
             cs.endText(); cs.close();
-            doc.save(DOSSIER_PDF + nomResultat);
+            doc.save(DOSSIER_COURANT + nomResultat);
             doc.close();
             System.out.println("[SERVEUR] CréerPDF : " + nomResultat);
-            return lireFichier(DOSSIER_PDF + nomResultat);
+            return lireFichier(DOSSIER_COURANT + nomResultat);
         } catch (Exception e) { throw new PDFException("Erreur creerPDF : " + e.getMessage()); }
     }
 
@@ -181,7 +188,7 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
     @Override
     public boolean uploadFichier(String nomFichier, byte[] contenu) throws PDFException {
         try {
-            Files.write(Paths.get(DOSSIER_PDF + nomFichier), contenu);
+            Files.write(Paths.get(DOSSIER_COURANT + nomFichier), contenu);
             System.out.println("[SERVEUR] Upload : " + nomFichier);
             return true;
         } catch (Exception e) { throw new PDFException("Erreur upload : " + e.getMessage()); }
@@ -192,7 +199,7 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
     public byte[] downloadFichier(String nomFichier) throws PDFException {
         try {
             System.out.println("[SERVEUR] Download : " + nomFichier);
-            return lireFichier(DOSSIER_PDF + nomFichier);
+            return lireFichier(DOSSIER_COURANT + nomFichier);
         } catch (PDFException e) { throw e; }
         catch (Exception e) { throw new PDFException("Erreur download : " + e.getMessage()); }
     }
@@ -201,7 +208,7 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
     @Override
     public String[] listerFichiers() throws PDFException {
         try {
-            File dossier = new File(DOSSIER_PDF);
+            File dossier = new File(DOSSIER_COURANT);
             String[] fichiers = dossier.list((d, n) -> n.endsWith(".pdf") || n.endsWith(".png"));
             if (fichiers == null) fichiers = new String[0];
             Arrays.sort(fichiers);
@@ -214,7 +221,7 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
     @Override
     public byte[] rotationPages(String nomFichier, int[] pages, int angle, String nomResultat) throws PDFException {
         try {
-            PDDocument doc = PDDocument.load(new File(DOSSIER_PDF + nomFichier));
+            PDDocument doc = PDDocument.load(new File(DOSSIER_COURANT + nomFichier));
             Set<Integer> aRoter = new HashSet<>();
             for (int p : pages) aRoter.add(p);
             for (int i = 0; i < doc.getNumberOfPages(); i++) {
@@ -224,10 +231,10 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
                     page.setRotation(rotation);
                 }
             }
-            doc.save(DOSSIER_PDF + nomResultat);
+            doc.save(DOSSIER_COURANT + nomResultat);
             doc.close();
             System.out.println("[SERVEUR] Rotation " + angle + "° : " + nomResultat);
-            return lireFichier(DOSSIER_PDF + nomResultat);
+            return lireFichier(DOSSIER_COURANT + nomResultat);
         } catch (Exception e) { throw new PDFException("Erreur rotation : " + e.getMessage()); }
     }
 
@@ -235,7 +242,7 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
     @Override
     public byte[] protegerPDF(String nomFichier, String motDePasse, String nomResultat) throws PDFException {
         try {
-            PDDocument doc = PDDocument.load(new File(DOSSIER_PDF + nomFichier));
+            PDDocument doc = PDDocument.load(new File(DOSSIER_COURANT + nomFichier));
             AccessPermission ap = new AccessPermission();
             ap.setCanPrint(true);
             ap.setCanModify(false);
@@ -243,10 +250,10 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
             StandardProtectionPolicy spp = new StandardProtectionPolicy(motDePasse, motDePasse, ap);
             spp.setEncryptionKeyLength(128);
             doc.protect(spp);
-            doc.save(DOSSIER_PDF + nomResultat);
+            doc.save(DOSSIER_COURANT + nomResultat);
             doc.close();
             System.out.println("[SERVEUR] Protégé : " + nomResultat);
-            return lireFichier(DOSSIER_PDF + nomResultat);
+            return lireFichier(DOSSIER_COURANT + nomResultat);
         } catch (Exception e) { throw new PDFException("Erreur protection : " + e.getMessage()); }
     }
 
@@ -254,19 +261,19 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
     @Override
     public byte[] compresserPDF(String nomFichier, String nomResultat) throws PDFException {
         try {
-            PDDocument doc = PDDocument.load(new File(DOSSIER_PDF + nomFichier));
+            PDDocument doc = PDDocument.load(new File(DOSSIER_COURANT + nomFichier));
             // Compression basique : supprimer les ressources inutilisées
             doc.getDocumentCatalog().getPages().forEach(page -> {
                 try {
                     page.getResources();
                 } catch (Exception ignored) {}
             });
-            doc.save(DOSSIER_PDF + nomResultat);
-            long avant = new File(DOSSIER_PDF + nomFichier).length();
-            long apres = new File(DOSSIER_PDF + nomResultat).length();
+            doc.save(DOSSIER_COURANT + nomResultat);
+            long avant = new File(DOSSIER_COURANT + nomFichier).length();
+            long apres = new File(DOSSIER_COURANT + nomResultat).length();
             doc.close();
             System.out.println("[SERVEUR] Compression : " + avant + " -> " + apres + " octets");
-            return lireFichier(DOSSIER_PDF + nomResultat);
+            return lireFichier(DOSSIER_COURANT + nomResultat);
         } catch (Exception e) { throw new PDFException("Erreur compression : " + e.getMessage()); }
     }
 
@@ -274,7 +281,7 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
     @Override
     public byte[] numeroterPages(String nomFichier, String nomResultat) throws PDFException {
         try {
-            PDDocument doc = PDDocument.load(new File(DOSSIER_PDF + nomFichier));
+            PDDocument doc = PDDocument.load(new File(DOSSIER_COURANT + nomFichier));
             int total = doc.getNumberOfPages();
             for (int i = 0; i < total; i++) {
                 PDPage page = doc.getPage(i);
@@ -290,10 +297,10 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
                 cs.endText();
                 cs.close();
             }
-            doc.save(DOSSIER_PDF + nomResultat);
+            doc.save(DOSSIER_COURANT + nomResultat);
             doc.close();
             System.out.println("[SERVEUR] Numérotation : " + total + " pages");
-            return lireFichier(DOSSIER_PDF + nomResultat);
+            return lireFichier(DOSSIER_COURANT + nomResultat);
         } catch (Exception e) { throw new PDFException("Erreur numérotation : " + e.getMessage()); }
     }
 
@@ -301,7 +308,7 @@ public class GestionnairePDFImpl extends GestionnairePDFPOA {
     @Override
     public String apercuPage(String nomFichier, int page) throws PDFException {
         try {
-            PDDocument doc = PDDocument.load(new File(DOSSIER_PDF + nomFichier));
+            PDDocument doc = PDDocument.load(new File(DOSSIER_COURANT + nomFichier));
             PDFRenderer renderer = new PDFRenderer(doc);
             BufferedImage img = renderer.renderImageWithDPI(page - 1, 120);
             ByteArrayOutputStream bos = new ByteArrayOutputStream();
