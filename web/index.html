@@ -426,7 +426,7 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
 <div id="toast"></div>
 
 <script>
-const API = 'http://localhost:8080/api';
+const API = window.location.origin + '/api';
 let sel = null, allFiles = [];
 
 window.onload = () => { ping(); rafraichir(); };
