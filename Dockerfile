@@ -8,11 +8,10 @@ COPY web/ /app/web/
 
 RUN mkdir -p /pdfs /app/bin
 
-# Compiler les stubs IDL
 RUN javac -d /app/bin /app/src/PDFService/*.java
 
-# Compiler le serveur web (sans CORBA)
 RUN javac -cp /app/bin:/app/lib/* -d /app/bin \
+    /app/src/PDFServer/AuthManager.java \
     /app/src/PDFServer/GestionnairePDFImpl.java \
     /app/src/PDFServer/StartServerWeb.java
 
