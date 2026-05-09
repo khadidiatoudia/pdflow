@@ -18,7 +18,17 @@ import java.util.*;
 
 public class GestionnairePDFImpl extends GestionnairePDFPOA {
 
-    private static final String DOSSIER_PDF = "pdfs/";
+    private static String initDossier() {
+        // Essayer /pdfs d'abord, sinon utiliser un dossier local
+        java.io.File f1 = new java.io.File("/pdfs");
+        if (f1.exists() || f1.mkdirs()) return "/pdfs/";
+        java.io.File f2 = new java.io.File("pdfs");
+        f2.mkdirs();
+        return "pdfs/";
+    }
+
+
+    private static final String DOSSIER_PDF = initDossier();
 
     // 1. Infos PDF
     @Override
