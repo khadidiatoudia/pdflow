@@ -8,14 +8,14 @@ COPY web/ /app/web/
 
 RUN mkdir -p /pdfs /app/bin
 
-RUN idlj -fall -td /app/src /app/src/PDFService.idl 2>/dev/null || true
-
+# Compiler les stubs IDL
 RUN javac -d /app/bin /app/src/PDFService/*.java
 
+# Compiler le serveur web (sans CORBA)
 RUN javac -cp /app/bin:/app/lib/* -d /app/bin \
     /app/src/PDFServer/GestionnairePDFImpl.java \
-    /app/src/PDFServer/StartServer.java
+    /app/src/PDFServer/StartServerWeb.java
 
 EXPOSE 8080
 
-CMD orbd -ORBInitialPort 1050 & sleep 3 && java -cp /app/bin:/app/lib/* StartServer -ORBInitialPort 1050 -ORBInitialHost localhost
+CMD java -cp /app/bin:/app/lib/* StartServerWeb
