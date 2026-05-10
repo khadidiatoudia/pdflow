@@ -19,16 +19,20 @@ public class StartServerWeb {
         HttpServer server = HttpServer.create(new InetSocketAddress(HTTP_PORT), 0);
         server.createContext("/", exchange -> {
             String path = exchange.getRequestURI().getPath();
-            if (path.equals("/") || path.equals("/index.html")) {
-                servirHTML(exchange);
-            } else if (path.startsWith("/api/auth/")) {
-                traiterAuth(exchange);
-            } else if (path.startsWith("/api/admin/")) {
-                traiterAdmin(exchange);
-            } else if (path.startsWith("/api/")) {
-                traiterAPI(exchange);
-            } else {
-                repondre(exchange, 404, "text/plain", "Non trouvé");
+            try {
+                if (path.equals("/") || path.equals("/index.html")) {
+                    servirHTML(exchange);
+                } else if (path.startsWith("/api/auth/")) {
+                    traiterAuth(exchange);
+                } else if (path.startsWith("/api/admin/")) {
+                    traiterAdmin(exchange);
+                } else if (path.startsWith("/api/")) {
+                    traiterAPI(exchange);
+                } else {
+                    repondre(exchange, 404, "text/plain", "Non trouvé");
+                }
+            } catch (Exception e) {
+                try { repondre(exchange, 500, "application/json", "{\"erreur\":\"" + esc(e.getMessage()) + "\"}"); } catch (Exception ignored) {}
             }
         });
 
@@ -44,23 +48,16 @@ public class StartServerWeb {
     private static void traiterAuth(HttpExchange exchange) throws IOException {
         String path = exchange.getRequestURI().getPath();
         String op = path.replace("/api/auth/", "");
-
-        exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-        exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-        exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type,Authorization");
+        setCORS(exchange);
         if (exchange.getRequestMethod().equals("OPTIONS")) { exchange.sendResponseHeaders(204,-1); return; }
-
         try {
             String json;
             switch (op) {
                 case "login": {
                     byte[] body = readBody(exchange);
                     String bs = new String(body, "UTF-8");
-                    String username = getJsonField(bs, "username");
-                    String password = getJsonField(bs, "password");
-                    Map<String,String> result = AuthManager.login(username, password);
-                    // Créer dossier user si nécessaire
-                    new File(AuthManager.getDossierUser(username)).mkdirs();
+                    Map<String,String> result = AuthManager.login(getJsonField(bs,"username"), getJsonField(bs,"password"));
+                    new File("/tmp/pdfs/" + result.get("username") + "/").mkdirs();
                     json = "{\"succes\":true,\"token\":\"" + result.get("token") + "\"," +
                            "\"username\":\"" + result.get("username") + "\"," +
                            "\"role\":\"" + result.get("role") + "\"," +
@@ -70,19 +67,25 @@ public class StartServerWeb {
                 case "register": {
                     byte[] body = readBody(exchange);
                     String bs = new String(body, "UTF-8");
-                    AuthManager.inscrire(
-                        getJsonField(bs, "username"),
-                        getJsonField(bs, "password"),
-                        getJsonField(bs, "email")
-                    );
-                    json = "{\"succes\":true,\"message\":\"Compte créé avec succès\"}";
+                    AuthManager.inscrire(getJsonField(bs,"username"), getJsonField(bs,"password"), getJsonField(bs,"email"));
+                    json = "{\"succes\":true,\"message\":\"Compte créé. Vérifiez votre email.\"}";
+                    break;
+                }
+                case "logout": {
+                    String token = getToken(exchange);
+                    if (!token.isEmpty()) AuthManager.logout(token);
+                    json = "{\"succes\":true}";
+                    break;
+                }
+                case "me": {
+                    Map<String,String> info = AuthManager.verifierToken(getToken(exchange));
+                    json = "{\"username\":\"" + info.get("username") + "\",\"role\":\"" + info.get("role") + "\"}";
                     break;
                 }
                 case "confirm": {
                     String confirmToken = exchange.getRequestURI().getQuery();
                     confirmToken = confirmToken != null ? confirmToken.replace("token=","") : "";
                     AuthManager.confirmerCompte(confirmToken);
-                    // Rediriger vers la page principale avec message
                     String html = "<html><head><meta charset='UTF-8'><meta http-equiv='refresh' content='3;url=/'></head>" +
                         "<body style='font-family:sans-serif;text-align:center;padding:60px;background:#F5F2EE'>" +
                         "<h1 style='color:#2BB673'>✅ Compte confirmé !</h1>" +
@@ -95,19 +98,6 @@ public class StartServerWeb {
                     exchange.getResponseBody().write(htmlBytes);
                     exchange.getResponseBody().close();
                     return;
-                }
-
-                case "logout": {
-                    String token = getToken(exchange);
-                    if (!token.isEmpty()) AuthManager.logout(token);
-                    json = "{\"succes\":true}";
-                    break;
-                }
-                case "me": {
-                    String token = getToken(exchange);
-                    Map<String,String> info = AuthManager.verifierToken(token);
-                    json = "{\"username\":\"" + info.get("username") + "\",\"role\":\"" + info.get("role") + "\"}";
-                    break;
                 }
                 default:
                     json = "{\"erreur\":\"Route inconnue\"}";
@@ -122,22 +112,13 @@ public class StartServerWeb {
     //  ADMIN
     // ══════════════════════════════════════
     private static void traiterAdmin(HttpExchange exchange) throws IOException {
-        exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-        exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-        exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type,Authorization");
+        setCORS(exchange);
         if (exchange.getRequestMethod().equals("OPTIONS")) { exchange.sendResponseHeaders(204,-1); return; }
-
         try {
-            // Vérifier que c'est un admin
-            String token = getToken(exchange);
-            Map<String,String> info = AuthManager.verifierToken(token);
-            if (!"admin".equals(info.get("role"))) {
-                repondre(exchange, 403, "application/json", "{\"erreur\":\"Accès refusé\"}");
-                return;
-            }
+            Map<String,String> info = AuthManager.verifierToken(getToken(exchange));
+            if (!"admin".equals(info.get("role"))) { repondre(exchange, 403, "application/json", "{\"erreur\":\"Accès refusé\"}"); return; }
 
-            String path = exchange.getRequestURI().getPath();
-            String op = path.replace("/api/admin/", "");
+            String op = exchange.getRequestURI().getPath().replace("/api/admin/", "");
             String json;
 
             switch (op) {
@@ -146,58 +127,48 @@ public class StartServerWeb {
                     StringBuilder sb = new StringBuilder("[");
                     for (int i=0; i<users.size(); i++) {
                         Map<String,String> u = users.get(i);
+                        if (i>0) sb.append(",");
                         sb.append("{\"username\":\"").append(esc(u.get("username"))).append("\",")
                           .append("\"email\":\"").append(esc(u.get("email"))).append("\",")
                           .append("\"role\":\"").append(u.get("role")).append("\",")
                           .append("\"actif\":").append(u.get("actif")).append(",")
                           .append("\"created_at\":\"").append(esc(u.get("created_at"))).append("\",")
                           .append("\"last_login\":\"").append(esc(u.get("last_login"))).append("\"}");
-                        if (i < users.size()-1) sb.append(",");
                     }
-                    sb.append("]");
-                    json = sb.toString();
+                    json = sb.append("]").toString();
                     break;
                 }
                 case "toggleActif": {
                     byte[] body = readBody(exchange);
-                    String bs = new String(body, "UTF-8");
-                    AuthManager.toggleActif(getJsonField(bs, "username"));
+                    AuthManager.toggleActif(getJsonField(new String(body,"UTF-8"), "username"));
                     json = "{\"succes\":true}";
                     break;
                 }
                 case "changerRole": {
                     byte[] body = readBody(exchange);
                     String bs = new String(body, "UTF-8");
-                    AuthManager.changerRole(getJsonField(bs, "username"), getJsonField(bs, "role"));
+                    AuthManager.changerRole(getJsonField(bs,"username"), getJsonField(bs,"role"));
                     json = "{\"succes\":true}";
                     break;
                 }
                 case "supprimer": {
                     byte[] body = readBody(exchange);
-                    String bs = new String(body, "UTF-8");
-                    AuthManager.supprimerUtilisateur(getJsonField(bs, "username"));
+                    AuthManager.supprimerUtilisateur(getJsonField(new String(body,"UTF-8"), "username"));
                     json = "{\"succes\":true}";
                     break;
                 }
                 case "fichiersTous": {
-                    // Admin voit tous les fichiers de tous les users
-                    String basePath = AuthManager.getDossierUser("admin").replace("admin/","");
-                    File base = new File(basePath);
+                    List<Map<String,String>> tousF = AuthManager.listerTousFichiersAdmin();
                     StringBuilder sb = new StringBuilder("[");
-                    boolean first = true;
-                    File[] users = base.listFiles(File::isDirectory);
-                    if (users != null) {
-                        for (File ud : users) {
-                            File[] files = ud.listFiles(f -> f.getName().endsWith(".pdf") || f.getName().endsWith(".png"));
-                            if (files != null) for (File f : files) {
-                                if (!first) sb.append(",");
-                                sb.append("{\"nom\":\"").append(esc(f.getName())).append("\",\"user\":\"").append(esc(ud.getName())).append("\"}");
-                                first = false;
-                            }
-                        }
+                    for (int i=0; i<tousF.size(); i++) {
+                        Map<String,String> ff = tousF.get(i);
+                        if (i>0) sb.append(",");
+                        sb.append("{\"nom\":\"").append(esc(ff.get("nom"))).append("\",")
+                          .append("\"user\":\"").append(esc(ff.get("user"))).append("\",")
+                          .append("\"taille\":").append(ff.get("taille")).append(",")
+                          .append("\"created_at\":\"").append(esc(ff.get("created_at"))).append("\"}");
                     }
-                    sb.append("]");
-                    json = sb.toString();
+                    json = sb.append("]").toString();
                     break;
                 }
                 default:
@@ -215,48 +186,36 @@ public class StartServerWeb {
     private static void traiterAPI(HttpExchange exchange) throws IOException {
         String path  = exchange.getRequestURI().getPath();
         String query = exchange.getRequestURI().getQuery();
-
-        exchange.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
-        exchange.getResponseHeaders().add("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
-        exchange.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type,Authorization");
+        setCORS(exchange);
         if (exchange.getRequestMethod().equals("OPTIONS")) { exchange.sendResponseHeaders(204,-1); return; }
 
         try {
-            // Vérifier le token
-            String token = getToken(exchange);
-            Map<String,String> userInfo = AuthManager.verifierToken(token);
+            Map<String,String> userInfo = AuthManager.verifierToken(getToken(exchange));
             String username = userInfo.get("username");
-            String role = userInfo.get("role");
 
-            // Dossier de l'utilisateur
-            String dossier = AuthManager.getDossierUser(username);
-            new File(dossier).mkdirs();
-
-            // Utiliser le dossier de l'utilisateur
-            impl.setDossier(dossier);
+            String tmpDir = "/tmp/pdfs/" + username + "/";
+            new File(tmpDir).mkdirs();
+            impl.setDossier(tmpDir);
 
             String op = path.replace("/api/", "");
             String json;
 
             switch (op) {
                 case "lister":
-                    String[] fichiers;
-                    if ("admin".equals(role)) {
-                        fichiers = impl.listerFichiers();
-                    } else {
-                        fichiers = impl.listerFichiers();
-                    }
-                    json = toJsonArray(fichiers);
+                    json = toJsonArray(AuthManager.listerFichiersDB(username));
                     break;
 
-                case "infos":
-                    InfosPDF infos = impl.getInfos(getParam(query, "nom"));
+                case "infos": {
+                    String nom = getParam(query, "nom");
+                    preparerFichier(username, nom);
+                    InfosPDF infos = impl.getInfos(nom);
                     json = "{\"nomFichier\":\"" + esc(infos.nomFichier) + "\"," +
                            "\"nombrePages\":" + infos.nombrePages + "," +
                            "\"auteur\":\"" + esc(infos.auteur) + "\"," +
                            "\"titre\":\"" + esc(infos.titre) + "\"," +
                            "\"tailleFichier\":" + infos.tailleFichier + "}";
                     break;
+                }
 
                 case "creer": case "creerBase64": {
                     byte[] body = readBody(exchange);
@@ -270,6 +229,7 @@ public class StartServerWeb {
                         nom = getJsonField(bs, "nom");
                     }
                     byte[] pdf = impl.creerPDF(texte, nom);
+                    AuthManager.sauvegarderFichier(username, nom, pdf);
                     json = "{\"succes\":true,\"taille\":" + pdf.length + ",\"nom\":\"" + esc(nom) + "\"}";
                     break;
                 }
@@ -277,41 +237,49 @@ public class StartServerWeb {
                 case "fusionner": {
                     byte[] body = readBody(exchange);
                     String bs = new String(body, "UTF-8");
-                    byte[] r = impl.fusionner(getJsonField(bs,"nom1"), getJsonField(bs,"nom2"), getJsonField(bs,"resultat"));
-                    json = "{\"succes\":true,\"taille\":" + r.length + "}";
+                    String n1 = getJsonField(bs,"nom1"), n2 = getJsonField(bs,"nom2"), res = getJsonField(bs,"resultat");
+                    preparerFichier(username, n1); preparerFichier(username, n2);
+                    impl.fusionner(n1, n2, res);
+                    byte[] data = sauvegarderResultat(username, res);
+                    json = "{\"succes\":true,\"taille\":" + data.length + "}";
                     break;
                 }
 
                 case "extrairePages": {
                     byte[] body = readBody(exchange);
                     String bs = new String(body, "UTF-8");
-                    impl.extrairePages(getJsonField(bs,"nom"),
-                        Integer.parseInt(getJsonField(bs,"debut")),
-                        Integer.parseInt(getJsonField(bs,"fin")),
-                        getJsonField(bs,"resultat"));
+                    String nom = getJsonField(bs,"nom"), res = getJsonField(bs,"resultat");
+                    preparerFichier(username, nom);
+                    impl.extrairePages(nom, Integer.parseInt(getJsonField(bs,"debut")), Integer.parseInt(getJsonField(bs,"fin")), res);
+                    sauvegarderResultat(username, res);
                     json = "{\"succes\":true}";
                     break;
                 }
 
-                case "extraireTexte":
-                    json = toJsonArray(impl.extraireTexte(getParam(query, "nom")));
+                case "extraireTexte": {
+                    String nom = getParam(query, "nom");
+                    preparerFichier(username, nom);
+                    json = toJsonArray(impl.extraireTexte(nom));
                     break;
+                }
 
                 case "supprimerPages": {
                     byte[] body = readBody(exchange);
                     String bs = new String(body, "UTF-8");
-                    String nomS = getJsonField(bs,"nom"), resS = getJsonField(bs,"resultat");
-                    InfosPDF infosS = impl.getInfos(nomS);
+                    String nom = getJsonField(bs,"nom"), res = getJsonField(bs,"resultat");
+                    preparerFichier(username, nom);
+                    InfosPDF infos = impl.getInfos(nom);
                     String pRaw = bs.substring(bs.indexOf("\"pages\":")+8);
                     pRaw = pRaw.substring(pRaw.indexOf("[")+1, pRaw.indexOf("]"));
                     int[] pArr = pRaw.trim().isEmpty() ? new int[0] :
                         Arrays.stream(pRaw.split(",")).mapToInt(s->Integer.parseInt(s.trim())).toArray();
-                    if (pArr.length >= infosS.nombrePages) {
-                        new File(dossier + nomS).delete();
+                    if (pArr.length >= infos.nombrePages) {
+                        AuthManager.supprimerFichierDB(username, nom);
                         json = "{\"succes\":true,\"supprime\":true}";
                     } else {
-                        impl.supprimerPages(nomS, pArr, resS);
-                        json = "{\"succes\":true,\"fichier\":\"" + esc(resS) + "\"}";
+                        impl.supprimerPages(nom, pArr, res);
+                        sauvegarderResultat(username, res);
+                        json = "{\"succes\":true,\"fichier\":\"" + esc(res) + "\"}";
                     }
                     break;
                 }
@@ -319,19 +287,24 @@ public class StartServerWeb {
                 case "ajouterTexte": {
                     byte[] body = readBody(exchange);
                     String bs = new String(body, "UTF-8");
-                    impl.ajouterTexte(getJsonField(bs,"nom"), getJsonField(bs,"texte"),
+                    String nom = getJsonField(bs,"nom"), res = getJsonField(bs,"resultat");
+                    preparerFichier(username, nom);
+                    impl.ajouterTexte(nom, getJsonField(bs,"texte"),
                         Integer.parseInt(getJsonField(bs,"page")),
                         Float.parseFloat(getJsonField(bs,"x")),
-                        Float.parseFloat(getJsonField(bs,"y")),
-                        getJsonField(bs,"resultat"));
-                    json = "{\"succes\":true,\"fichier\":\"" + esc(getJsonField(bs,"resultat")) + "\"}";
+                        Float.parseFloat(getJsonField(bs,"y")), res);
+                    sauvegarderResultat(username, res);
+                    json = "{\"succes\":true,\"fichier\":\"" + esc(res) + "\"}";
                     break;
                 }
 
                 case "convertirImages": {
                     byte[] body = readBody(exchange);
                     String bs = new String(body, "UTF-8");
-                    String[] imgs = impl.convertirEnImages(getJsonField(bs,"nom"), Integer.parseInt(getJsonField(bs,"dpi")));
+                    String nom = getJsonField(bs,"nom");
+                    preparerFichier(username, nom);
+                    String[] imgs = impl.convertirEnImages(nom, Integer.parseInt(getJsonField(bs,"dpi")));
+                    for (String img : imgs) sauvegarderResultat(username, img);
                     json = toJsonArray(imgs);
                     break;
                 }
@@ -339,59 +312,69 @@ public class StartServerWeb {
                 case "rotation": {
                     byte[] body = readBody(exchange);
                     String bs = new String(body, "UTF-8");
+                    String nom = getJsonField(bs,"nom"), res = getJsonField(bs,"resultat");
+                    preparerFichier(username, nom);
                     String pRaw = bs.substring(bs.indexOf("\"pages\":")+8);
                     pRaw = pRaw.substring(pRaw.indexOf("[")+1, pRaw.indexOf("]"));
                     int[] pArr = pRaw.trim().isEmpty() ? new int[0] :
                         Arrays.stream(pRaw.split(",")).mapToInt(s->Integer.parseInt(s.trim())).toArray();
-                    impl.rotationPages(getJsonField(bs,"nom"), pArr, Integer.parseInt(getJsonField(bs,"angle")), getJsonField(bs,"resultat"));
-                    json = "{\"succes\":true,\"fichier\":\"" + esc(getJsonField(bs,"resultat")) + "\"}";
+                    impl.rotationPages(nom, pArr, Integer.parseInt(getJsonField(bs,"angle")), res);
+                    sauvegarderResultat(username, res);
+                    json = "{\"succes\":true,\"fichier\":\"" + esc(res) + "\"}";
                     break;
                 }
 
                 case "proteger": {
                     byte[] body = readBody(exchange);
                     String bs = new String(body, "UTF-8");
-                    impl.protegerPDF(getJsonField(bs,"nom"), getJsonField(bs,"motDePasse"), getJsonField(bs,"resultat"));
-                    json = "{\"succes\":true,\"fichier\":\"" + esc(getJsonField(bs,"resultat")) + "\"}";
+                    String nom = getJsonField(bs,"nom"), res = getJsonField(bs,"resultat");
+                    preparerFichier(username, nom);
+                    impl.protegerPDF(nom, getJsonField(bs,"motDePasse"), res);
+                    sauvegarderResultat(username, res);
+                    json = "{\"succes\":true,\"fichier\":\"" + esc(res) + "\"}";
                     break;
                 }
 
                 case "numeroter": {
                     byte[] body = readBody(exchange);
                     String bs = new String(body, "UTF-8");
-                    impl.numeroterPages(getJsonField(bs,"nom"), getJsonField(bs,"resultat"));
-                    json = "{\"succes\":true,\"fichier\":\"" + esc(getJsonField(bs,"resultat")) + "\"}";
+                    String nom = getJsonField(bs,"nom"), res = getJsonField(bs,"resultat");
+                    preparerFichier(username, nom);
+                    impl.numeroterPages(nom, res);
+                    sauvegarderResultat(username, res);
+                    json = "{\"succes\":true,\"fichier\":\"" + esc(res) + "\"}";
                     break;
                 }
 
                 case "upload": {
                     byte[] body = readBody(exchange);
                     String bs = new String(body, "UTF-8");
-                    impl.uploadFichier(getJsonField(bs,"nom"), Base64.getDecoder().decode(getJsonField(bs,"contenu")));
+                    String nom = getJsonField(bs,"nom");
+                    byte[] contenu = Base64.getDecoder().decode(getJsonField(bs,"contenu"));
+                    AuthManager.sauvegarderFichier(username, nom, contenu);
+                    Files.write(Paths.get(tmpDir + nom), contenu);
                     json = "{\"succes\":true}";
                     break;
                 }
 
                 case "download": {
                     String nom = getParam(query, "nom");
-                    byte[] data = impl.downloadFichier(nom);
+                    byte[] data = AuthManager.lireFichier(username, nom);
                     json = "{\"nom\":\"" + esc(nom) + "\",\"contenu\":\"" + Base64.getEncoder().encodeToString(data) + "\"}";
                     break;
                 }
 
                 case "supprimerFichier": {
-                    byte[] bodySF = readBody(exchange);
-                    String bodySFStr = new String(bodySF, "UTF-8");
-                    String nomSF = getJsonField(bodySFStr, "nom");
-                    java.io.File fileSF = new java.io.File(dossier + nomSF);
-                    if (!fileSF.exists()) throw new Exception("Fichier introuvable : " + nomSF);
-                    fileSF.delete();
-                    json = "{\"succes\":true,\"message\":\"Fichier supprimé\"}" ;
+                    byte[] body = readBody(exchange);
+                    String nom = getJsonField(new String(body,"UTF-8"), "nom");
+                    AuthManager.supprimerFichierDB(username, nom);
+                    json = "{\"succes\":true,\"message\":\"Fichier supprimé\"}";
                     break;
                 }
 
                 case "apercu": {
                     String nom = getParam(query, "nom");
+                    preparerFichier(username, nom);
                     int page = Integer.parseInt(getParam(query,"page").isEmpty()?"1":getParam(query,"page"));
                     json = "{\"image\":\"" + impl.apercuPage(nom, page) + "\"}";
                     break;
@@ -400,26 +383,44 @@ public class StartServerWeb {
                 default:
                     json = "{\"erreur\":\"Opération inconnue : " + op + "\"}";
             }
-
             repondre(exchange, 200, "application/json", json);
 
+        } catch (PDFException e) {
+            repondre(exchange, 400, "application/json", "{\"erreur\":\"" + esc(e.message) + "\"}");
         } catch (Exception e) {
             String msg = e.getMessage() != null ? e.getMessage() : "Erreur inconnue";
-            if (msg.contains("Session") || msg.contains("invalide")) {
-                repondre(exchange, 401, "application/json", "{\"erreur\":\"" + esc(msg) + "\"}");
-            } else {
-                repondre(exchange, 500, "application/json", "{\"erreur\":\"" + esc(msg) + "\"}");
-            }
+            int code = msg.contains("Session") || msg.contains("invalide") ? 401 : 500;
+            repondre(exchange, code, "application/json", "{\"erreur\":\"" + esc(msg) + "\"}");
         }
     }
 
     // ══════════════════════════════════════
     //  HELPERS
     // ══════════════════════════════════════
+    private static void preparerFichier(String username, String nom) throws Exception {
+        byte[] data = AuthManager.lireFichier(username, nom);
+        String dir = "/tmp/pdfs/" + username + "/";
+        new File(dir).mkdirs();
+        Files.write(Paths.get(dir + nom), data);
+    }
+
+    private static byte[] sauvegarderResultat(String username, String nom) throws Exception {
+        String path = "/tmp/pdfs/" + username + "/" + nom;
+        byte[] data = Files.readAllBytes(Paths.get(path));
+        AuthManager.sauvegarderFichier(username, nom, data);
+        return data;
+    }
+
     private static String getToken(HttpExchange exchange) {
         String auth = exchange.getRequestHeaders().getFirst("Authorization");
         if (auth != null && auth.startsWith("Bearer ")) return auth.substring(7);
         return "";
+    }
+
+    private static void setCORS(HttpExchange ex) {
+        ex.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
+        ex.getResponseHeaders().add("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+        ex.getResponseHeaders().add("Access-Control-Allow-Headers", "Content-Type,Authorization");
     }
 
     private static void servirHTML(HttpExchange ex) throws IOException {
@@ -493,8 +494,8 @@ public class StartServerWeb {
     private static String toJsonArray(String[] arr) {
         StringBuilder sb = new StringBuilder("[");
         for (int i=0; i<arr.length; i++) {
+            if (i>0) sb.append(",");
             sb.append("\"").append(esc(arr[i])).append("\"");
-            if (i<arr.length-1) sb.append(",");
         }
         return sb.append("]").toString();
     }

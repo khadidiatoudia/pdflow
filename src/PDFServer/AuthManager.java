@@ -51,6 +51,17 @@ public class AuthManager {
             ")"
         );
         st.execute(
+            "CREATE TABLE IF NOT EXISTS fichiers (" +
+            "  id SERIAL PRIMARY KEY," +
+            "  username VARCHAR(100) NOT NULL," +
+            "  nom VARCHAR(255) NOT NULL," +
+            "  contenu BYTEA NOT NULL," +
+            "  taille INTEGER," +
+            "  created_at TIMESTAMP DEFAULT NOW()," +
+            "  UNIQUE(username, nom)" +
+            ")"
+        );
+        st.execute(
             "CREATE TABLE IF NOT EXISTS sessions (" +
             "  token VARCHAR(255) PRIMARY KEY," +
             "  username VARCHAR(100) NOT NULL," +
@@ -227,6 +238,75 @@ public class AuthManager {
         ps.setString(1, username); ps.executeUpdate(); ps.close();
         PreparedStatement ps2 = conn.prepareStatement("DELETE FROM sessions WHERE username=?");
         ps2.setString(1, username); ps2.executeUpdate(); ps2.close();
+    }
+
+    // ══════════════════════════════════════
+    //  Gestion fichiers en DB
+    // ══════════════════════════════════════
+    public static void sauvegarderFichier(String username, String nom, byte[] contenu) throws Exception {
+        PreparedStatement ps = conn.prepareStatement(
+            "INSERT INTO fichiers (username, nom, contenu, taille) VALUES (?,?,?,?) " +
+            "ON CONFLICT (username, nom) DO UPDATE SET contenu=EXCLUDED.contenu, taille=EXCLUDED.taille"
+        );
+        ps.setString(1, username);
+        ps.setString(2, nom);
+        ps.setBytes(3, contenu);
+        ps.setInt(4, contenu.length);
+        ps.executeUpdate();
+        ps.close();
+    }
+
+    public static byte[] lireFichier(String username, String nom) throws Exception {
+        PreparedStatement ps = conn.prepareStatement(
+            "SELECT contenu FROM fichiers WHERE username=? AND nom=?"
+        );
+        ps.setString(1, username);
+        ps.setString(2, nom);
+        ResultSet rs = ps.executeQuery();
+        if (!rs.next()) throw new Exception("Fichier introuvable : " + nom);
+        byte[] data = rs.getBytes("contenu");
+        rs.close(); ps.close();
+        return data;
+    }
+
+    public static String[] listerFichiersDB(String username) throws Exception {
+        PreparedStatement ps = conn.prepareStatement(
+            "SELECT nom FROM fichiers WHERE username=? ORDER BY created_at DESC"
+        );
+        ps.setString(1, username);
+        ResultSet rs = ps.executeQuery();
+        java.util.List<String> noms = new java.util.ArrayList<>();
+        while (rs.next()) noms.add(rs.getString("nom"));
+        rs.close(); ps.close();
+        return noms.toArray(new String[0]);
+    }
+
+    public static void supprimerFichierDB(String username, String nom) throws Exception {
+        PreparedStatement ps = conn.prepareStatement(
+            "DELETE FROM fichiers WHERE username=? AND nom=?"
+        );
+        ps.setString(1, username);
+        ps.setString(2, nom);
+        ps.executeUpdate();
+        ps.close();
+    }
+
+    public static List<Map<String,String>> listerTousFichiersAdmin() throws Exception {
+        List<Map<String,String>> liste = new ArrayList<>();
+        Statement st = conn.createStatement();
+        ResultSet rs = st.executeQuery(
+            "SELECT username, nom, taille, created_at FROM fichiers ORDER BY created_at DESC"
+        );
+        while (rs.next()) {
+            Map<String,String> f = new HashMap<>();
+            f.put("user", rs.getString("username"));
+            f.put("nom", rs.getString("nom"));
+            f.put("taille", String.valueOf(rs.getInt("taille")));
+            f.put("created_at", rs.getString("created_at") != null ? rs.getString("created_at").substring(0,16) : "");
+            liste.add(f);
+        }
+        rs.close(); st.close();
+        return liste;
     }
 
     // ══════════════════════════════════════
