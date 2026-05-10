@@ -10,8 +10,8 @@ public class AuthManager {
         try {
             Class.forName("org.postgresql.Driver");
             // Construire l'URL JDBC manuellement avec le port explicite
-            String dbUrl = System.getenv().getOrDefault("DATABASE_URL",
-                "postgresql://pdflow_db_user:Xkct1Joa8kwuCnlQwYC6LqQQkFp09APf@dpg-d802ndbbc2fs739e9dcg-a/pdflow_db");
+            String dbUrl = System.getenv("DATABASE_URL");
+                if (dbUrl == null) throw new Exception("DATABASE_URL non définie");
 
             // Parser l'URL manuellement
             // Format: postgresql://user:pass@host/dbname
