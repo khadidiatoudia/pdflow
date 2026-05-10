@@ -14,7 +14,7 @@ public class EmailService {
     private static final String MAIL_PASS = System.getenv().getOrDefault("MAIL_PASS", "");
     private static final String APP_URL   = System.getenv().getOrDefault("APP_URL", "https://pdflow.onrender.com");
 
-    public static void envoyerConfirmation(String destinataire, String username) {
+    public static void envoyerConfirmation(String destinataire, String username, String confirmToken) {
         if (MAIL_USER.isEmpty() || MAIL_PASS.isEmpty()) {
             System.out.println("⚠️ Email non configuré (MAIL_USER/MAIL_PASS manquants)");
             return;
@@ -39,7 +39,7 @@ public class EmailService {
                 message.setFrom(new InternetAddress(MAIL_USER, "PDFlow"));
                 message.setRecipients(Message.RecipientType.TO, InternetAddress.parse(destinataire));
                 message.setSubject("Bienvenue sur PDFlow ! 🎉");
-                message.setContent(buildHTML(username), "text/html; charset=utf-8");
+                message.setContent(buildHTML(username, confirmToken), "text/html; charset=utf-8");
 
                 Transport.send(message);
                 System.out.println("✅ Email envoyé à : " + destinataire);
@@ -50,7 +50,7 @@ public class EmailService {
         }, "email-sender").start();
     }
 
-    private static String buildHTML(String username) {
+    private static String buildHTML(String username, String confirmToken) {
         return "<!DOCTYPE html><html><head><meta charset='UTF-8'></head><body style='font-family:sans-serif;background:#F5F2EE;margin:0;padding:0'>" +
             "<div style='max-width:560px;margin:40px auto;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 4px 30px rgba(0,0,0,.1)'>" +
             "<div style='background:linear-gradient(135deg,#E85D2F,#7C3AED);padding:40px;text-align:center'>" +

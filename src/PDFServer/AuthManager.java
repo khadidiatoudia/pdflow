@@ -2,35 +2,27 @@ import java.sql.*;
 import java.security.MessageDigest;
 import java.util.*;
 
-/**
- * Gestionnaire d'authentification avec SQLite
- */
 public class AuthManager {
 
-    private static final String DB_PATH = initDB();
-    private static Connection conn;
+    private static final String DB_URL = System.getenv().getOrDefault(
+        "DATABASE_URL",
+        "postgresql://pdflow_db_user:Xkct1Joa8kwuCnlQwYC6LqQQkFp09APf@dpg-d802ndbbc2fs739e9dcg-a/pdflow_db"
+    );
 
-    private static String initDB() {
-        // Chercher un dossier accessible
-        String[] paths = {"/pdfs/users.db", "pdfs/users.db", "/tmp/users.db"};
-        for (String p : paths) {
-            try {
-                java.io.File dir = new java.io.File(p).getParentFile();
-                if (dir != null && (dir.exists() || dir.mkdirs())) return p;
-            } catch (Exception e) {}
-        }
-        return "/tmp/users.db";
-    }
+    private static Connection conn;
 
     static {
         try {
-            Class.forName("org.sqlite.JDBC");
-            conn = DriverManager.getConnection("jdbc:sqlite:" + DB_PATH);
+            Class.forName("org.postgresql.Driver");
+            // Convertir l'URL postgresql:// en jdbc:postgresql://
+            String jdbcUrl = DB_URL.replace("postgresql://", "jdbc:postgresql://");
+            conn = DriverManager.getConnection(jdbcUrl);
             creerTables();
             creerAdminParDefaut();
-            System.out.println("✅ Base de données : " + DB_PATH);
+            System.out.println("✅ PostgreSQL connecté !");
         } catch (Exception e) {
-            System.err.println("❌ Erreur SQLite : " + e.getMessage());
+            System.err.println("❌ Erreur PostgreSQL : " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
@@ -38,23 +30,24 @@ public class AuthManager {
         Statement st = conn.createStatement();
         st.execute(
             "CREATE TABLE IF NOT EXISTS utilisateurs (" +
-            "  id INTEGER PRIMARY KEY AUTOINCREMENT," +
-            "  username TEXT UNIQUE NOT NULL," +
-            "  password TEXT NOT NULL," +
-            "  email TEXT," +
-            "  role TEXT DEFAULT 'user'," +
-            "  actif INTEGER DEFAULT 1," +
-            "  created_at TEXT DEFAULT (datetime('now'))," +
-            "  last_login TEXT" +
+            "  id SERIAL PRIMARY KEY," +
+            "  username VARCHAR(100) UNIQUE NOT NULL," +
+            "  password VARCHAR(255) NOT NULL," +
+            "  email VARCHAR(255)," +
+            "  role VARCHAR(20) DEFAULT 'user'," +
+            "  actif INTEGER DEFAULT 0," +
+            "  created_at TIMESTAMP DEFAULT NOW()," +
+            "  last_login TIMESTAMP," +
+            "  confirmation_token VARCHAR(255)" +
             ")"
         );
         st.execute(
             "CREATE TABLE IF NOT EXISTS sessions (" +
-            "  token TEXT PRIMARY KEY," +
-            "  username TEXT NOT NULL," +
-            "  role TEXT NOT NULL," +
-            "  created_at TEXT DEFAULT (datetime('now'))," +
-            "  expires_at TEXT" +
+            "  token VARCHAR(255) PRIMARY KEY," +
+            "  username VARCHAR(100) NOT NULL," +
+            "  role VARCHAR(20) NOT NULL," +
+            "  created_at TIMESTAMP DEFAULT NOW()," +
+            "  expires_at TIMESTAMP" +
             ")"
         );
         st.close();
@@ -62,7 +55,7 @@ public class AuthManager {
 
     private static void creerAdminParDefaut() throws SQLException {
         PreparedStatement ps = conn.prepareStatement(
-            "INSERT OR IGNORE INTO utilisateurs (username, password, email, role) VALUES (?,?,?,?)"
+            "INSERT INTO utilisateurs (username, password, email, role, actif) VALUES (?,?,?,?,1) ON CONFLICT (username) DO NOTHING"
         );
         ps.setString(1, "admin");
         ps.setString(2, hashPassword("admin123"));
@@ -75,7 +68,6 @@ public class AuthManager {
     // ══════════════════════════════════════
     //  Authentification
     // ══════════════════════════════════════
-
     public static Map<String,String> login(String username, String password) throws Exception {
         PreparedStatement ps = conn.prepareStatement(
             "SELECT username, role, actif FROM utilisateurs WHERE username=? AND password=?"
@@ -85,21 +77,22 @@ public class AuthManager {
         ResultSet rs = ps.executeQuery();
 
         if (!rs.next()) throw new Exception("Identifiants incorrects");
-        if (rs.getInt("actif") == 0) throw new Exception("Compte désactivé");
+        if (rs.getInt("actif") == 0) throw new Exception("Compte non activé. Vérifiez votre email.");
 
         String role = rs.getString("role");
+        int actif = rs.getInt("actif");
         rs.close(); ps.close();
 
         // Mettre à jour last_login
         PreparedStatement up = conn.prepareStatement(
-            "UPDATE utilisateurs SET last_login=datetime('now') WHERE username=?"
+            "UPDATE utilisateurs SET last_login=NOW() WHERE username=?"
         );
         up.setString(1, username); up.executeUpdate(); up.close();
 
         // Créer session
         String token = UUID.randomUUID().toString();
         PreparedStatement ins = conn.prepareStatement(
-            "INSERT INTO sessions (token, username, role, expires_at) VALUES (?,?,?,datetime('now','+24 hours'))"
+            "INSERT INTO sessions (token, username, role, expires_at) VALUES (?,?,?,NOW() + INTERVAL '24 hours')"
         );
         ins.setString(1, token); ins.setString(2, username); ins.setString(3, role);
         ins.executeUpdate(); ins.close();
@@ -108,12 +101,13 @@ public class AuthManager {
         result.put("token", token);
         result.put("username", username);
         result.put("role", role);
+        result.put("actif", String.valueOf(actif));
         return result;
     }
 
     public static Map<String,String> verifierToken(String token) throws Exception {
         PreparedStatement ps = conn.prepareStatement(
-            "SELECT username, role FROM sessions WHERE token=? AND expires_at > datetime('now')"
+            "SELECT username, role FROM sessions WHERE token=? AND expires_at > NOW()"
         );
         ps.setString(1, token);
         ResultSet rs = ps.executeQuery();
@@ -131,15 +125,14 @@ public class AuthManager {
     }
 
     // ══════════════════════════════════════
-    //  Gestion utilisateurs
+    //  Inscription
     // ══════════════════════════════════════
-
     public static void inscrire(String username, String password, String email) throws Exception {
         if (username.length() < 3) throw new Exception("Nom d'utilisateur trop court (min 3 caractères)");
         if (password.length() < 6) throw new Exception("Mot de passe trop court (min 6 caractères)");
 
         PreparedStatement ps = conn.prepareStatement(
-            "INSERT INTO utilisateurs (username, password, email, role) VALUES (?,?,?,'user')"
+            "INSERT INTO utilisateurs (username, password, email, role, actif) VALUES (?,?,?,'user',0)"
         );
         ps.setString(1, username);
         ps.setString(2, hashPassword(password));
@@ -151,15 +144,38 @@ public class AuthManager {
         }
         ps.close();
 
-        // Créer le dossier de l'utilisateur
+        // Créer dossier utilisateur
         new java.io.File(getDossierUser(username)).mkdirs();
 
-        // Envoyer email de confirmation
+        // Générer token et envoyer email
         if (email != null && !email.isEmpty()) {
-            EmailService.envoyerConfirmation(email, username);
+            String confirmToken = genererTokenConfirmation(username);
+            EmailService.envoyerConfirmation(email, username, confirmToken);
         }
     }
 
+    public static String genererTokenConfirmation(String username) throws Exception {
+        String token = UUID.randomUUID().toString();
+        PreparedStatement ps = conn.prepareStatement(
+            "UPDATE utilisateurs SET confirmation_token=? WHERE username=?"
+        );
+        ps.setString(1, token); ps.setString(2, username);
+        ps.executeUpdate(); ps.close();
+        return token;
+    }
+
+    public static void confirmerCompte(String token) throws Exception {
+        PreparedStatement ps = conn.prepareStatement(
+            "UPDATE utilisateurs SET actif=1, confirmation_token=NULL WHERE confirmation_token=?"
+        );
+        ps.setString(1, token);
+        int rows = ps.executeUpdate(); ps.close();
+        if (rows == 0) throw new Exception("Token invalide ou déjà utilisé");
+    }
+
+    // ══════════════════════════════════════
+    //  Gestion utilisateurs (Admin)
+    // ══════════════════════════════════════
     public static List<Map<String,String>> listerUtilisateurs() throws Exception {
         List<Map<String,String>> liste = new ArrayList<>();
         Statement st = conn.createStatement();
@@ -168,12 +184,12 @@ public class AuthManager {
         );
         while (rs.next()) {
             Map<String,String> u = new HashMap<>();
-            u.put("username", rs.getString("username"));
-            u.put("email", rs.getString("email") != null ? rs.getString("email") : "");
-            u.put("role", rs.getString("role"));
-            u.put("actif", String.valueOf(rs.getInt("actif")));
-            u.put("created_at", rs.getString("created_at") != null ? rs.getString("created_at") : "");
-            u.put("last_login", rs.getString("last_login") != null ? rs.getString("last_login") : "Jamais");
+            u.put("username",   rs.getString("username"));
+            u.put("email",      rs.getString("email") != null ? rs.getString("email") : "");
+            u.put("role",       rs.getString("role"));
+            u.put("actif",      String.valueOf(rs.getInt("actif")));
+            u.put("created_at", rs.getString("created_at") != null ? rs.getString("created_at").substring(0,16) : "");
+            u.put("last_login", rs.getString("last_login") != null ? rs.getString("last_login").substring(0,16) : "Jamais");
             liste.add(u);
         }
         rs.close(); st.close();
@@ -207,9 +223,8 @@ public class AuthManager {
     // ══════════════════════════════════════
     //  Helpers
     // ══════════════════════════════════════
-
     public static String getDossierUser(String username) {
-        String base = DB_PATH.replace("users.db", "");
+        String base = "/pdfs/";
         return base + username + "/";
     }
 

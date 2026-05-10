@@ -257,7 +257,7 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
     <div class="user-menu">
       <div class="user-avatar" id="userAvatar">?</div>
       <span class="user-name" id="userName"></span>
-      <span id="userRoleBadge"></span>
+      <span id="userRoleBadge" style="display:none"></span>
       <button class="btn-logout" onclick="logout()">Déconnexion</button>
     </div>
   </div>
@@ -305,7 +305,7 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
     <div class="tool-card c6" onclick="openM('proteger')"><div class="tool-icon ic6">🔒</div><div class="tool-name">Protéger</div><div class="tool-desc">Ajoutez un mot de passe à votre PDF.</div><div class="tool-arrow">↗</div></div>
     <div class="tool-card c3" onclick="openM('numeroter')"><div class="tool-icon ic3">🔢</div><div class="tool-name">Numéroter</div><div class="tool-desc">Ajoutez des numéros de pages automatiquement.</div><div class="tool-arrow">↗</div></div>
     <div class="tool-card c8" onclick="openM('convertirVers')"><div class="tool-icon ic8">📥</div><div class="tool-name">Convertir vers PDF</div><div class="tool-desc">Convertissez un fichier texte en PDF.</div><div class="tool-arrow">↗</div></div>
-    <div class="tool-card c2" onclick="openM('apercu')"><div class="tool-icon ic2">👁️</div><div class="tool-name">Aperçu PDF</div><div class="tool-desc">Visualisez votre PDF dans le navigateur.</div><div class="tool-arrow">↗</div></div>
+    <div class="tool-card c6" onclick="supprimerFichierConfirm()"><div class="tool-icon ic6">🗂️</div><div class="tool-name">Supprimer un fichier</div><div class="tool-desc">Supprimez définitivement un fichier du serveur.</div><div class="tool-arrow">↗</div></div>
   </div>
 </section>
 
@@ -552,6 +552,15 @@ async function login() {
     localStorage.setItem('pdflow_user', d.username);
     localStorage.setItem('pdflow_role', d.role);
 
+    // Vérifier si compte actif
+    if (d.actif === false || d.actif === 0) {
+      const errEl = document.getElementById('loginErr');
+      errEl.textContent = "⚠️ Votre compte n'est pas encore activé. Vérifiez votre email pour confirmer votre inscription.";
+      errEl.classList.add('show');
+      localStorage.clear();
+      return;
+    }
+
     afficherApp();
   } catch(e) {
     errEl.textContent = 'Erreur de connexion au serveur';
@@ -588,6 +597,7 @@ async function register() {
 }
 
 function logout() {
+  arreterPolling();
   if (currentToken) fetch(`${API}/auth/logout`, {method:'POST', headers:{Authorization:'Bearer '+currentToken}});
   localStorage.removeItem('pdflow_token');
   localStorage.removeItem('pdflow_user');
@@ -606,9 +616,10 @@ function afficherApp() {
   // Mettre à jour le header
   document.getElementById('userName').textContent = currentUser;
   document.getElementById('userAvatar').textContent = currentUser.charAt(0).toUpperCase();
-  document.getElementById('userRoleBadge').innerHTML = currentRole === 'admin'
-    ? '<span class="role-badge role-admin">👑 Admin</span>'
-    : '<span class="role-badge role-user">👤 Utilisateur</span>';
+  if (currentRole === 'admin') {
+    document.getElementById('userRoleBadge').style.display = 'inline-flex';
+    document.getElementById('userRoleBadge').innerHTML = '<span class="role-badge role-admin">👑 Admin</span>';
+  }
 
   // Afficher bannière admin
   if (currentRole === 'admin') {
@@ -625,6 +636,24 @@ function afficherApp() {
   document.getElementById('pillTxt').textContent = 'Connecté';
 
   rafraichir();
+}
+
+// ══════════════════════════════════════
+//  POLLING TEMPS RÉEL ADMIN
+// ══════════════════════════════════════
+let pollingInterval = null;
+
+function demarrerPolling() {
+  if (currentRole !== 'admin') return;
+  // Actualiser toutes les 5 secondes
+  pollingInterval = setInterval(async () => {
+    await rafraichirAdmin();
+    await rafraichir();
+  }, 5000);
+}
+
+function arreterPolling() {
+  if (pollingInterval) { clearInterval(pollingInterval); pollingInterval = null; }
 }
 
 // Vérifier session existante
@@ -1078,6 +1107,24 @@ async function voirInfos() {
 // ══════════════════════════════════════
 //  UI HELPERS
 // ══════════════════════════════════════
+async function supprimerFichierConfirm() {
+  if (!sel) { toast('⚠️ Sélectionnez un fichier à supprimer', 'e'); goTo('files'); return; }
+  confirmer(`Voulez-vous vraiment supprimer "${sel}" définitivement ?`, '🗂️', async () => {
+    try {
+      const r = await fetch(`${API}/supprimerFichier`, {
+        method: 'POST',
+        headers: authHeaders(),
+        body: JSON.stringify({nom: sel})
+      });
+      const d = await r.json();
+      if (d.erreur) { toast('❌ ' + d.erreur, 'e'); return; }
+      toast(`🗂️ "${sel}" supprimé !`, 's');
+      sel = null;
+      await rafraichir();
+    } catch(e) { toast('❌ ' + e.message, 'e'); }
+  });
+}
+
 function log(msg){document.getElementById('logTxt').textContent=msg;}
 function toast(msg,type='i'){
   const t=document.getElementById('toast');

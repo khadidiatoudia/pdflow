@@ -10,7 +10,7 @@ RUN mkdir -p /pdfs /app/bin
 
 RUN javac -d /app/bin /app/src/PDFService/*.java
 
-RUN javac -cp /app/bin:/app/lib/pdfbox-2.0.31.jar:/app/lib/fontbox-2.0.31.jar:/app/lib/commons-logging-1.2.jar:/app/lib/sqlite-jdbc-3.36.0.3.jar:/app/lib/javax.mail-1.6.2.jar \
+RUN javac -cp /app/bin:/app/lib/pdfbox-2.0.31.jar:/app/lib/fontbox-2.0.31.jar:/app/lib/commons-logging-1.2.jar:/app/lib/sqlite-jdbc-3.36.0.3.jar:/app/lib/javax.mail-1.6.2.jar:/app/lib/postgresql-42.7.3.jar \
     -d /app/bin \
     /app/src/PDFServer/EmailService.java \
     /app/src/PDFServer/AuthManager.java \
@@ -19,4 +19,4 @@ RUN javac -cp /app/bin:/app/lib/pdfbox-2.0.31.jar:/app/lib/fontbox-2.0.31.jar:/a
 
 EXPOSE 8080
 
-CMD java -cp /app/bin:/app/lib/pdfbox-2.0.31.jar:/app/lib/fontbox-2.0.31.jar:/app/lib/commons-logging-1.2.jar:/app/lib/sqlite-jdbc-3.36.0.3.jar:/app/lib/javax.mail-1.6.2.jar StartServerWeb
+CMD java -cp /app/bin:/app/lib/pdfbox-2.0.31.jar:/app/lib/fontbox-2.0.31.jar:/app/lib/commons-logging-1.2.jar:/app/lib/sqlite-jdbc-3.36.0.3.jar:/app/lib/javax.mail-1.6.2.jar:/app/lib/postgresql-42.7.3.jar StartServerWeb

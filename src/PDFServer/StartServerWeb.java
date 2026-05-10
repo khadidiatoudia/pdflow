@@ -63,7 +63,8 @@ public class StartServerWeb {
                     new File(AuthManager.getDossierUser(username)).mkdirs();
                     json = "{\"succes\":true,\"token\":\"" + result.get("token") + "\"," +
                            "\"username\":\"" + result.get("username") + "\"," +
-                           "\"role\":\"" + result.get("role") + "\"}";
+                           "\"role\":\"" + result.get("role") + "\"," +
+                           "\"actif\":" + result.get("actif") + "}";
                     break;
                 }
                 case "register": {
@@ -77,6 +78,25 @@ public class StartServerWeb {
                     json = "{\"succes\":true,\"message\":\"Compte créé avec succès\"}";
                     break;
                 }
+                case "confirm": {
+                    String confirmToken = exchange.getRequestURI().getQuery();
+                    confirmToken = confirmToken != null ? confirmToken.replace("token=","") : "";
+                    AuthManager.confirmerCompte(confirmToken);
+                    // Rediriger vers la page principale avec message
+                    String html = "<html><head><meta charset='UTF-8'><meta http-equiv='refresh' content='3;url=/'></head>" +
+                        "<body style='font-family:sans-serif;text-align:center;padding:60px;background:#F5F2EE'>" +
+                        "<h1 style='color:#2BB673'>✅ Compte confirmé !</h1>" +
+                        "<p style='color:#6B6560'>Votre compte a été activé. Redirection en cours...</p>" +
+                        "<a href='/' style='color:#E85D2F'>Cliquer ici si la redirection ne fonctionne pas</a>" +
+                        "</body></html>";
+                    byte[] htmlBytes = html.getBytes("UTF-8");
+                    exchange.getResponseHeaders().add("Content-Type", "text/html; charset=utf-8");
+                    exchange.sendResponseHeaders(200, htmlBytes.length);
+                    exchange.getResponseBody().write(htmlBytes);
+                    exchange.getResponseBody().close();
+                    return;
+                }
+
                 case "logout": {
                     String token = getToken(exchange);
                     if (!token.isEmpty()) AuthManager.logout(token);
@@ -356,6 +376,17 @@ public class StartServerWeb {
                     String nom = getParam(query, "nom");
                     byte[] data = impl.downloadFichier(nom);
                     json = "{\"nom\":\"" + esc(nom) + "\",\"contenu\":\"" + Base64.getEncoder().encodeToString(data) + "\"}";
+                    break;
+                }
+
+                case "supprimerFichier": {
+                    byte[] bodySF = readBody(exchange);
+                    String bodySFStr = new String(bodySF, "UTF-8");
+                    String nomSF = getJsonField(bodySFStr, "nom");
+                    java.io.File fileSF = new java.io.File(dossier + nomSF);
+                    if (!fileSF.exists()) throw new Exception("Fichier introuvable : " + nomSF);
+                    fileSF.delete();
+                    json = "{\"succes\":true,\"message\":\"Fichier supprimé\"}" ;
                     break;
                 }
 
