@@ -4,19 +4,28 @@ import java.util.*;
 
 public class AuthManager {
 
-    private static final String DB_URL = System.getenv().getOrDefault(
-        "DATABASE_URL",
-        "postgresql://pdflow_db_user:Xkct1Joa8kwuCnlQwYC6LqQQkFp09APf@dpg-d802ndbbc2fs739e9dcg-a/pdflow_db"
-    );
-
     private static Connection conn;
 
     static {
         try {
             Class.forName("org.postgresql.Driver");
-            // Convertir l'URL postgresql:// en jdbc:postgresql://
-            String jdbcUrl = DB_URL.replace("postgresql://", "jdbc:postgresql://");
-            conn = DriverManager.getConnection(jdbcUrl);
+            // Construire l'URL JDBC manuellement avec le port explicite
+            String dbUrl = System.getenv().getOrDefault("DATABASE_URL",
+                "postgresql://pdflow_db_user:Xkct1Joa8kwuCnlQwYC6LqQQkFp09APf@dpg-d802ndbbc2fs739e9dcg-a/pdflow_db");
+
+            // Parser l'URL manuellement
+            // Format: postgresql://user:pass@host/dbname
+            String withoutProto = dbUrl.replace("postgresql://", "");
+            String userPass = withoutProto.substring(0, withoutProto.indexOf("@"));
+            String hostDb   = withoutProto.substring(withoutProto.indexOf("@") + 1);
+            String user     = userPass.substring(0, userPass.indexOf(":"));
+            String pass     = userPass.substring(userPass.indexOf(":") + 1);
+            String host     = hostDb.contains("/") ? hostDb.substring(0, hostDb.indexOf("/")) : hostDb;
+            String dbname   = hostDb.contains("/") ? hostDb.substring(hostDb.indexOf("/") + 1) : "";
+
+            String jdbcUrl = "jdbc:postgresql://" + host + ":5432/" + dbname + "?sslmode=require";
+            System.out.println("🔌 Connexion PostgreSQL : " + host + "/" + dbname);
+            conn = DriverManager.getConnection(jdbcUrl, user, pass);
             creerTables();
             creerAdminParDefaut();
             System.out.println("✅ PostgreSQL connecté !");
