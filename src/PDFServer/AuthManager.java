@@ -153,6 +153,11 @@ public class AuthManager {
 
         // Créer le dossier de l'utilisateur
         new java.io.File(getDossierUser(username)).mkdirs();
+
+        // Envoyer email de confirmation
+        if (email != null && !email.isEmpty()) {
+            EmailService.envoyerConfirmation(email, username);
+        }
     }
 
     public static List<Map<String,String>> listerUtilisateurs() throws Exception {

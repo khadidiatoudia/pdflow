@@ -615,6 +615,10 @@ function afficherApp() {
     document.getElementById('adminBanner').classList.add('show');
     document.getElementById('admin').style.display = 'block';
     rafraichirAdmin();
+  } else {
+    // Utilisateur simple : cacher les fonctions admin
+    document.getElementById('adminBanner').style.display = 'none';
+    document.getElementById('admin').style.display = 'none';
   }
 
   document.getElementById('pill').classList.add('ok');
