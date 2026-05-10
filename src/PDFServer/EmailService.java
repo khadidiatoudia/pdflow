@@ -8,7 +8,9 @@ import java.nio.charset.StandardCharsets;
  */
 public class EmailService {
 
-    private static final String API_KEY = System.getenv("BREVO_API_KEY");
+    private static final String API_KEY = System.getenv("BREVO_API_KEY") != null
+        ? System.getenv("BREVO_API_KEY")
+        : System.getProperty("BREVO_API_KEY", "");
 
     private static final String APP_URL = System.getenv().getOrDefault(
         "APP_URL", "https://pdflow.onrender.com"

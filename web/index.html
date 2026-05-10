@@ -1109,20 +1109,19 @@ async function voirInfos() {
 // ══════════════════════════════════════
 async function supprimerFichierConfirm() {
   if (!sel) { toast('⚠️ Sélectionnez un fichier à supprimer', 'e'); goTo('files'); return; }
-  confirmer(`Voulez-vous vraiment supprimer "${sel}" définitivement ?`, '🗂️', async () => {
-    try {
-      const r = await fetch(`${API}/supprimerFichier`, {
-        method: 'POST',
-        headers: authHeaders(),
-        body: JSON.stringify({nom: sel})
-      });
-      const d = await r.json();
-      if (d.erreur) { toast('❌ ' + d.erreur, 'e'); return; }
-      toast(`🗂️ "${sel}" supprimé !`, 's');
-      sel = null;
-      await rafraichir();
-    } catch(e) { toast('❌ ' + e.message, 'e'); }
-  });
+  if (!confirm(`Supprimer définitivement "${sel}" ?`)) return;
+  try {
+    const r = await fetch(`${API}/supprimerFichier`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({nom: sel})
+    });
+    const d = await r.json();
+    if (d.erreur) { toast('❌ ' + d.erreur, 'e'); return; }
+    toast(`🗂️ "${sel}" supprimé !`, 's');
+    sel = null;
+    await rafraichir();
+  } catch(e) { toast('❌ ' + e.message, 'e'); }
 }
 
 function log(msg){document.getElementById('logTxt').textContent=msg;}
