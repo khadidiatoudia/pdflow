@@ -22,7 +22,8 @@ public class EmailService {
     public static void envoyerConfirmation(String destinataire, String username, String confirmToken) {
         new Thread(() -> {
             try {
-                String confirmUrl = APP_URL + "/api/auth/confirm?token=" + confirmToken;
+                String appUrl = APP_URL.endsWith("/") ? APP_URL.substring(0, APP_URL.length()-1) : APP_URL;
+                String confirmUrl = appUrl + "/api/auth/confirm?token=" + confirmToken;
                 String html = buildHTML(username, confirmUrl);
 
                 String body = "{" +
