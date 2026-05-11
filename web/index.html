@@ -744,7 +744,7 @@ async function toggleUser(username) {
     });
     const d = await r.json();
     if (d.erreur) { toast('❌ '+d.erreur, 'e'); return; }
-    toast('✅ Statut modifié', 's');
+    toast('✅ Statut de ' + username + ' modifié', 's');
     await rafraichirAdmin();
   } catch(e) { toast('❌ '+e.message, 'e'); }
 }
