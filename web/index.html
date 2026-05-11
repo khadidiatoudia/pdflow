@@ -551,6 +551,7 @@ async function login() {
     localStorage.setItem('pdflow_token', d.token);
     localStorage.setItem('pdflow_user', d.username);
     localStorage.setItem('pdflow_role', d.role);
+    console.log('Connecté en tant que:', d.username, '| Rôle:', d.role, '| Token:', d.token.substring(0,8)+'...');
 
     // Vérifier si compte actif
     if (d.actif === false || d.actif === 0) {
