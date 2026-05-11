@@ -648,8 +648,10 @@ function demarrerPolling() {
   if (currentRole !== 'admin') return;
   // Actualiser toutes les 5 secondes
   pollingInterval = setInterval(async () => {
-    await rafraichirAdmin();
-    await rafraichir();
+    try {
+      await rafraichirAdmin();
+      await rafraichir();
+    } catch(e) { console.log('Polling error:', e.message); }
   }, 5000);
 }
 
@@ -697,28 +699,37 @@ function showAdminTab(tab) {
 async function rafraichirAdmin() {
   try {
     const r = await fetch(`${API}/admin/utilisateurs`, {headers:{Authorization:'Bearer '+currentToken}});
+    if (r.status === 401) { logout(); return; }
     const users = await r.json();
     if (users.erreur) { toast('❌ '+users.erreur, 'e'); return; }
+    
     document.getElementById('adminBannerInfo').textContent = users.length + ' utilisateur(s) enregistré(s)';
+    
     const tbody = document.getElementById('userTableBody');
-    tbody.innerHTML = users.map(u => `
-      <tr>
+    tbody.innerHTML = '';
+    
+    users.forEach(u => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
         <td><strong>${u.username}</strong></td>
         <td>${u.email || '—'}</td>
         <td><span class="role-badge ${u.role==='admin'?'role-admin':'role-user'}">${u.role==='admin'?'👑 Admin':'👤 User'}</span></td>
-        <td><span class="actif-badge ${u.actif=='1'?'actif-oui':'actif-non'}">${u.actif=='1'?'Actif':'Inactif'}</span></td>
+        <td><span class="actif-badge ${u.actif==1?'actif-oui':'actif-non'}">${u.actif==1?'Actif':'Inactif'}</span></td>
         <td>${u.created_at}</td>
         <td>${u.last_login}</td>
         <td>
           <div class="action-btns">
             ${u.username !== 'admin' ? `
-              <button class="action-btn action-btn-toggle" onclick="toggleUser('${u.username}')">${u.actif=='1'?'Désactiver':'Activer'}</button>
+              <button class="action-btn action-btn-toggle" onclick="toggleUser('${u.username}')">${u.actif==1?'Désactiver':'Activer'}</button>
               <button class="action-btn action-btn-role" onclick="changerRole('${u.username}','${u.role==='admin'?'user':'admin'}')">${u.role==='admin'?'→ User':'→ Admin'}</button>
               <button class="action-btn action-btn-del" onclick="supprimerUser('${u.username}')">Supprimer</button>
             ` : '<span style="color:var(--ink3);font-size:11px">Compte protégé</span>'}
           </div>
-        </td>
-      </tr>`).join('');
+        </td>`;
+      tbody.appendChild(tr);
+    });
+    
+    log(`👥 ${users.length} utilisateur(s) chargé(s)`);
   } catch(e) { toast('❌ '+e.message, 'e'); }
 }
 
