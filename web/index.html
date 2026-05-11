@@ -733,13 +733,7 @@ async function rafraichirAdmin() {
   } catch(e) { toast('❌ '+e.message, 'e'); }
 }
 
-async function toggleUser(username) {
-  try {
-    await fetch(`${API}/admin/toggleActif`, {method:'POST', headers:{Authorization:'Bearer '+currentToken,'Content-Type':'application/json'}, body:JSON.stringify({username})});
-    rafraichirAdmin();
-    toast('✅ Statut modifié', 's');
-  } catch(e) { toast('❌ '+e.message, 'e'); }
-}
+
 
 async function changerRole(username, role) {
   confirmer(`Changer le rôle de ${username} en ${role} ?`, '🔄', async () => {
