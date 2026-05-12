@@ -798,7 +798,7 @@ function confirmer(msg, icon, callback) {
   document.getElementById('confirmTitle').textContent = 'Confirmer';
   confirmCallback = callback;
   document.getElementById('confirmOv').classList.add('on');
-  document.getElementById('confirmOk').onclick = () => { closeConfirm(); if(confirmCallback) confirmCallback(); };
+  document.getElementById('confirmOk').onclick = () => { const cb = confirmCallback; closeConfirm(); if(cb) cb(); };
 }
 
 function closeConfirm() {
