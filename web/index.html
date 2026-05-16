@@ -13,6 +13,23 @@
   --border:#DDD8D0;--shadow:0 2px 20px rgba(26,23,20,.08);--shadow-lg:0 8px 60px rgba(26,23,20,.14);
   --r:16px;--r-sm:10px;
 }
+[data-theme="dark"]{
+  --bg:#0f0f1a;--bg2:#1a1a2e;--surface:#16213e;--ink:#e8e6e3;--ink2:#9994a0;--ink3:#5a5668;
+  --border:#2d2b3d;--shadow:0 2px 20px rgba(0,0,0,.3);--shadow-lg:0 8px 60px rgba(0,0,0,.5);
+}
+[data-theme="dark"] .auth-card{background:#1a1a2e}
+[data-theme="dark"] .auth-form .fi{background:#0f0f1a;border-color:#2d2b3d;color:#e8e6e3}
+[data-theme="dark"] .tool-card{background:#1a1a2e}
+[data-theme="dark"] .file-card{background:#1a1a2e}
+[data-theme="dark"] .modal{background:#1a1a2e}
+[data-theme="dark"] .confirm-box{background:#1a1a2e}
+[data-theme="dark"] .fi{background:#0f0f1a;border-color:#2d2b3d;color:#e8e6e3}
+[data-theme="dark"] header{background:rgba(15,15,26,.9)}
+[data-theme="dark"] .user-table th,[data-theme="dark"] .user-table td{border-color:#2d2b3d}
+[data-theme="dark"] .user-table tr:hover td{background:#1a1a2e}
+[data-theme="dark"] #logBar{background:#0f0f1a}
+[data-theme="dark"] .admin-tab{color:#9994a0}
+[data-theme="dark"] .admin-tab.active{background:#0f0f1a;color:#e8e6e3}
 html{scroll-behavior:smooth}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden}
 
@@ -218,9 +235,9 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
     <div class="auth-form">
       <div class="fg"><label class="fl">Nom d'utilisateur</label><input type="text" class="fi" id="loginUser" placeholder="votre_nom" autocomplete="username"></div>
       <div class="fg"><label class="fl">Mot de passe</label><input type="password" class="fi" id="loginPass" placeholder="••••••••" autocomplete="current-password"></div>
-      <button class="auth-btn" onclick="login()">Se connecter →</button>
+      <button class="auth-btn" id="loginBtn" onclick="login()">Se connecter →</button>
     </div>
-    <div class="auth-switch">Pas encore de compte ? <a onclick="showRegister()">Créer un compte</a></div>
+    <div class="auth-switch" id="noAccount">Pas encore de compte ? <a onclick="showRegister()" id="switchToRegister">Créer un compte</a></div>
   </div>
 </div>
 
@@ -238,9 +255,9 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
       <div class="fg"><label class="fl">Email</label><input type="email" class="fi" id="regEmail" placeholder="vous@exemple.com"></div>
       <div class="fg"><label class="fl">Mot de passe</label><input type="password" class="fi" id="regPass" placeholder="Min. 6 caractères"></div>
       <div class="fg"><label class="fl">Confirmer le mot de passe</label><input type="password" class="fi" id="regPass2" placeholder="••••••••"></div>
-      <button class="auth-btn" onclick="register()">Créer mon compte →</button>
+      <button class="auth-btn" id="registerBtn" onclick="register()">Créer mon compte →</button>
     </div>
-    <div class="auth-switch">Déjà un compte ? <a onclick="showLogin()">Se connecter</a></div>
+    <div class="auth-switch" id="haveAccount">Déjà un compte ? <a onclick="showLogin()" id="switchToLogin">Se connecter</a></div>
   </div>
 </div>
 
@@ -255,10 +272,16 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
     <div class="status-pill" id="pill"><div class="dot"></div><span id="pillTxt">Connecté</span></div>
     <div class="badge" id="badge">0 fichier</div>
     <div class="user-menu">
+      <div style="display:flex;gap:6px;align-items:center">
+        <button onclick="setLang('fr')" id="btn-fr" style="background:none;border:none;cursor:pointer;font-size:18px;opacity:0.5" title="Français">🇫🇷</button>
+        <button onclick="setLang('en')" id="btn-en" style="background:none;border:none;cursor:pointer;font-size:18px;opacity:0.5" title="English">🇬🇧</button>
+        <button onclick="setLang('ar')" id="btn-ar" style="background:none;border:none;cursor:pointer;font-size:18px;opacity:0.5" title="العربية">🇸🇦</button>
+      </div>
+      <button onclick="toggleTheme()" id="themeBtn" style="background:none;border:none;cursor:pointer;font-size:20px;padding:4px 8px" title="Thème">🌙</button>
       <div class="user-avatar" id="userAvatar">?</div>
       <span class="user-name" id="userName"></span>
       <span id="userRoleBadge" style="display:none"></span>
-      <button class="btn-logout" onclick="logout()">Déconnexion</button>
+      <button class="btn-logout" id="logoutBtn" onclick="logout()">Déconnexion</button>
     </div>
   </div>
 </header>
@@ -273,17 +296,17 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
 <!-- HERO -->
 <section class="hero" id="heroSection">
   <div>
-    <h1 class="hero-title">Vos PDF,<br><span class="hl">repensés.</span></h1>
-    <p class="hero-sub">Créez, fusionnez, découpez, protégez et analysez vos documents PDF directement depuis votre navigateur.</p>
+    <h1 class="hero-title"><span id="heroTitle1">Vos PDF,</span><br><span class="hl" id="heroTitle2">repensés.</span></h1>
+    <p class="hero-sub" id="heroSub">Créez, fusionnez, découpez, protégez et analysez vos documents PDF directement depuis votre navigateur.</p>
     <div class="hero-btns">
-      <button class="btn-hero btn-hero-p" onclick="goTo('tools')">🚀 Commencer</button>
-      <button class="btn-hero btn-hero-s" onclick="goTo('files')">📁 Mes fichiers</button>
+      <button class="btn-hero btn-hero-p" id="startBtn" onclick="goTo('tools')">🚀 Commencer</button>
+      <button class="btn-hero btn-hero-s" id="myFilesBtn" onclick="goTo('files')">📁 Mes fichiers</button>
     </div>
   </div>
   <div class="upload-hero" id="uploadHero" onclick="document.getElementById('fi').click()">
     <div class="upload-icon-big">📄</div>
-    <h3>Déposez un PDF ici</h3>
-    <p>ou cliquez pour parcourir vos fichiers</p>
+    <h3 id="dropTitle">Déposez un PDF ici</h3>
+    <p id="dropSub">ou cliquez pour parcourir vos fichiers</p>
     <div class="fmt-tags"><span class="fmt-tag">PDF</span><span class="fmt-tag">Jusqu'à 50 Mo</span><span class="fmt-tag">Sécurisé</span></div>
     <div class="prog-wrap" id="upProg"><div class="prog-bar"></div></div>
   </div>
@@ -292,20 +315,20 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
 
 <!-- TOOLS -->
 <section class="section" id="tools">
-  <div class="sec-header"><h2 class="sec-title">Tous les outils</h2></div>
+  <div class="sec-header"><h2 class="sec-title" id="toolsTitle">Tous les outils</h2></div>
   <div class="tools-grid">
-    <div class="tool-card c1" onclick="openM('creer')"><div class="tool-icon ic1">✏️</div><div class="tool-name">Créer un PDF</div><div class="tool-desc">Générez un document PDF depuis du texte.</div><div class="tool-arrow">↗</div></div>
-    <div class="tool-card c2" onclick="openM('fusionner')"><div class="tool-icon ic2">🔗</div><div class="tool-name">Fusionner</div><div class="tool-desc">Combinez plusieurs PDFs en un seul document.</div><div class="tool-arrow">↗</div></div>
-    <div class="tool-card c3" onclick="openM('extraire')"><div class="tool-icon ic3">✂️</div><div class="tool-name">Extraire des pages</div><div class="tool-desc">Isolez une plage de pages d'un document.</div><div class="tool-arrow">↗</div></div>
-    <div class="tool-card c4" onclick="openM('supprimer')"><div class="tool-icon ic4">🗑️</div><div class="tool-name">Supprimer des pages</div><div class="tool-desc">Retirez des pages indésirables.</div><div class="tool-arrow">↗</div></div>
-    <div class="tool-card c5" onclick="openM('texte')"><div class="tool-icon ic5">📝</div><div class="tool-name">Extraire le texte</div><div class="tool-desc">Copiez le contenu textuel de votre PDF.</div><div class="tool-arrow">↗</div></div>
-    <div class="tool-card c6" onclick="openM('ajouterTexte')"><div class="tool-icon ic6">🖊️</div><div class="tool-name">Ajouter du texte</div><div class="tool-desc">Annotez une page avec du texte personnalisé.</div><div class="tool-arrow">↗</div></div>
-    <div class="tool-card c7" onclick="openM('convertir')"><div class="tool-icon ic7">🖼️</div><div class="tool-name">PDF → Images</div><div class="tool-desc">Convertissez chaque page en image PNG.</div><div class="tool-arrow">↗</div></div>
-    <div class="tool-card c1" onclick="openM('rotation')"><div class="tool-icon ic1">🔄</div><div class="tool-name">Rotation</div><div class="tool-desc">Faites pivoter les pages de votre document.</div><div class="tool-arrow">↗</div></div>
-    <div class="tool-card c6" onclick="openM('proteger')"><div class="tool-icon ic6">🔒</div><div class="tool-name">Protéger</div><div class="tool-desc">Ajoutez un mot de passe à votre PDF.</div><div class="tool-arrow">↗</div></div>
-    <div class="tool-card c3" onclick="openM('numeroter')"><div class="tool-icon ic3">🔢</div><div class="tool-name">Numéroter</div><div class="tool-desc">Ajoutez des numéros de pages automatiquement.</div><div class="tool-arrow">↗</div></div>
-    <div class="tool-card c8" onclick="openM('convertirVers')"><div class="tool-icon ic8">📥</div><div class="tool-name">Convertir vers PDF</div><div class="tool-desc">Convertissez un fichier texte en PDF.</div><div class="tool-arrow">↗</div></div>
-    <div class="tool-card c6" onclick="supprimerFichierConfirm()"><div class="tool-icon ic6">🗂️</div><div class="tool-name">Supprimer un fichier</div><div class="tool-desc">Supprimez définitivement un fichier du serveur.</div><div class="tool-arrow">↗</div></div>
+    <div class="tool-card c1" onclick="openM('creer')"><div class="tool-icon ic1">✏️</div><div class="tool-name" id="tool1name">Créer un PDF</div><div class="tool-desc" id="tool1desc">Générez un document PDF depuis du texte.</div><div class="tool-arrow">↗</div></div>
+    <div class="tool-card c2" onclick="openM('fusionner')"><div class="tool-icon ic2">🔗</div><div class="tool-name" id="tool2name">Fusionner</div><div class="tool-desc" id="tool2desc">Combinez plusieurs PDFs en un seul document.</div><div class="tool-arrow">↗</div></div>
+    <div class="tool-card c3" onclick="openM('extraire')"><div class="tool-icon ic3">✂️</div><div class="tool-name" id="tool3name">Extraire des pages</div><div class="tool-desc" id="tool3desc">Isolez une plage de pages d'un document.</div><div class="tool-arrow">↗</div></div>
+    <div class="tool-card c4" onclick="openM('supprimer')"><div class="tool-icon ic4">🗑️</div><div class="tool-name" id="tool4name">Supprimer des pages</div><div class="tool-desc" id="tool4desc">Retirez des pages indésirables.</div><div class="tool-arrow">↗</div></div>
+    <div class="tool-card c5" onclick="openM('texte')"><div class="tool-icon ic5">📝</div><div class="tool-name" id="tool5name">Extraire le texte</div><div class="tool-desc" id="tool5desc">Copiez le contenu textuel de votre PDF.</div><div class="tool-arrow">↗</div></div>
+    <div class="tool-card c6" onclick="openM('ajouterTexte')"><div class="tool-icon ic6">🖊️</div><div class="tool-name" id="tool6name">Ajouter du texte</div><div class="tool-desc" id="tool6desc">Annotez une page avec du texte personnalisé.</div><div class="tool-arrow">↗</div></div>
+    <div class="tool-card c7" onclick="openM('convertir')"><div class="tool-icon ic7">🖼️</div><div class="tool-name" id="tool7name">PDF → Images</div><div class="tool-desc" id="tool7desc">Convertissez chaque page en image PNG.</div><div class="tool-arrow">↗</div></div>
+    <div class="tool-card c1" onclick="openM('rotation')"><div class="tool-icon ic1">🔄</div><div class="tool-name" id="tool8name">Rotation</div><div class="tool-desc" id="tool8desc">Faites pivoter les pages de votre document.</div><div class="tool-arrow">↗</div></div>
+    <div class="tool-card c6" onclick="openM('proteger')"><div class="tool-icon ic6">🔒</div><div class="tool-name" id="tool9name">Protéger</div><div class="tool-desc" id="tool9desc">Ajoutez un mot de passe à votre PDF.</div><div class="tool-arrow">↗</div></div>
+    <div class="tool-card c3" onclick="openM('numeroter')"><div class="tool-icon ic3">🔢</div><div class="tool-name" id="tool10name">Numéroter</div><div class="tool-desc" id="tool10desc">Ajoutez des numéros de pages automatiquement.</div><div class="tool-arrow">↗</div></div>
+    <div class="tool-card c8" onclick="openM('convertirVers')"><div class="tool-icon ic8">📥</div><div class="tool-name" id="tool11name">Convertir vers PDF</div><div class="tool-desc" id="tool11desc">Convertissez un fichier texte en PDF.</div><div class="tool-arrow">↗</div></div>
+    <div class="tool-card c6" onclick="supprimerFichierConfirm()"><div class="tool-icon ic6">🗂️</div><div class="tool-name" id="tool12name">Supprimer un fichier</div><div class="tool-desc" id="tool12desc">Supprimez définitivement un fichier du serveur.</div><div class="tool-arrow">↗</div></div>
   </div>
 </section>
 
@@ -314,14 +337,14 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
 <!-- FILES -->
 <section class="section" id="files" style="padding-top:48px">
   <div class="sec-header">
-    <h2 class="sec-title">Mes fichiers</h2>
+    <h2 class="sec-title" id="filesTitle">Mes fichiers</h2>
     <span class="sec-link" onclick="rafraichir()">↻ Actualiser</span>
   </div>
   <div class="fab">
-    <button class="btn btn-o btn-sm" onclick="downloadSel()">⬇ Télécharger</button>
-    <button class="btn btn-o btn-sm" onclick="showInfosSel()">ℹ Infos</button>
-    <button class="btn btn-o btn-sm" onclick="previewSel()">👁 Aperçu</button>
-    <button class="btn btn-dan btn-sm" onclick="document.getElementById('fi').click()">⬆ Uploader un PDF</button>
+    <button class="btn btn-o btn-sm" id="downloadBtn" onclick="downloadSel()">⬇ Télécharger</button>
+    <button class="btn btn-o btn-sm" id="infoBtn" onclick="showInfosSel()">ℹ Infos</button>
+    <button class="btn btn-o btn-sm" id="previewBtn2" onclick="previewSel()">👁 Aperçu</button>
+    <button class="btn btn-dan btn-sm" id="uploadBtn" onclick="document.getElementById('fi').click()">⬆ Uploader un PDF</button>
   </div>
   <div class="files-grid" id="filesGrid">
     <div class="empty"><div class="ei">📂</div><h3>Aucun fichier</h3><p>Uploadez votre premier PDF pour commencer</p></div>
@@ -512,6 +535,136 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
 
 <script>
 const API = window.location.origin + '/api';
+
+// ══════════════════════════════════════
+//  THÈME CLAIR/SOMBRE
+// ══════════════════════════════════════
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('themeBtn').textContent = isDark ? '🌙' : '☀️';
+  localStorage.setItem('pdflow_theme', isDark ? 'light' : 'dark');
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('pdflow_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  document.getElementById('themeBtn').textContent = saved === 'dark' ? '☀️' : '🌙';
+}
+
+// ══════════════════════════════════════
+//  MULTI-LANGUE
+// ══════════════════════════════════════
+let currentLang = 'fr';
+let translations = {};
+
+async function loadLang(lang) {
+  try {
+    const r = await fetch(`/i18n/${lang}.json`);
+    translations = await r.json();
+    currentLang = lang;
+    localStorage.setItem('pdflow_lang', lang);
+    applyTranslations();
+    updateLangButtons();
+    // RTL pour l'arabe
+    document.documentElement.setAttribute('dir', lang === 'ar' ? 'rtl' : 'ltr');
+    document.documentElement.setAttribute('lang', lang);
+  } catch(e) {
+    console.error('Erreur chargement langue:', e);
+  }
+}
+
+function t(key) {
+  return translations[key] || key;
+}
+
+function setLang(lang) {
+  loadLang(lang);
+}
+
+function updateLangButtons() {
+  ['fr','en','ar'].forEach(l => {
+    const btn = document.getElementById('btn-'+l);
+    if (btn) btn.style.opacity = l === currentLang ? '1' : '0.4';
+  });
+}
+
+function applyTranslations() {
+  // Header
+  const logoutBtn = document.getElementById('logoutBtn');
+  if (logoutBtn) logoutBtn.textContent = t('logout');
+
+  // Auth screens
+  safeText('loginTitle', t('login'));
+  safeText('registerTitle', t('register'));
+  safeText('appTagline', t('app_tagline'));
+  safeText('appTagline2', t('app_tagline'));
+  safePlaceholder('loginUser', t('username'));
+  safePlaceholder('loginPass', t('password'));
+  safePlaceholder('regUser', t('username'));
+  safePlaceholder('regEmail', t('email'));
+  safePlaceholder('regPass', t('password'));
+  safePlaceholder('regPass2', t('confirm_password'));
+  safeText('loginBtn', t('login_btn'));
+  safeText('registerBtn', t('register_btn'));
+  safeText('switchToRegister', t('register'));
+  safeText('switchToLogin', t('login'));
+  safeText('noAccount', t('no_account'));
+  safeText('haveAccount', t('have_account'));
+
+  // Hero
+  safeText('heroTitle1', t('hero_title_1'));
+  safeText('heroTitle2', t('hero_title_2'));
+  safeText('heroSub', t('hero_sub'));
+  safeText('startBtn', t('start'));
+  safeText('myFilesBtn', t('my_files'));
+  safeText('dropTitle', t('drop_pdf'));
+  safeText('dropSub', t('drop_sub'));
+
+  // Sections
+  safeText('toolsTitle', t('all_tools'));
+  safeText('filesTitle', t('files_title'));
+  safeText('uploadBtn', t('upload'));
+  safeText('downloadBtn', t('download'));
+  safeText('infoBtn', t('info'));
+  safeText('previewBtn2', t('preview'));
+
+  // Status
+  const pill = document.getElementById('pillTxt');
+  if (pill) pill.textContent = t('connected');
+
+  // Tools
+  safeText('tool1name', t('tool_create')); safeText('tool1desc', t('tool_create_desc'));
+  safeText('tool2name', t('tool_merge')); safeText('tool2desc', t('tool_merge_desc'));
+  safeText('tool3name', t('tool_extract')); safeText('tool3desc', t('tool_extract_desc'));
+  safeText('tool4name', t('tool_delete')); safeText('tool4desc', t('tool_delete_desc'));
+  safeText('tool5name', t('tool_text')); safeText('tool5desc', t('tool_text_desc'));
+  safeText('tool6name', t('tool_annotate')); safeText('tool6desc', t('tool_annotate_desc'));
+  safeText('tool7name', t('tool_images')); safeText('tool7desc', t('tool_images_desc'));
+  safeText('tool8name', t('tool_rotate')); safeText('tool8desc', t('tool_rotate_desc'));
+  safeText('tool9name', t('tool_protect')); safeText('tool9desc', t('tool_protect_desc'));
+  safeText('tool10name', t('tool_number')); safeText('tool10desc', t('tool_number_desc'));
+  safeText('tool11name', t('tool_convert')); safeText('tool11desc', t('tool_convert_desc'));
+  safeText('tool12name', t('tool_delete_file')); safeText('tool12desc', t('tool_delete_file_desc'));
+}
+
+function safeText(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = text;
+}
+
+function safePlaceholder(id, text) {
+  const el = document.getElementById(id);
+  if (el) el.placeholder = text;
+}
+
+async function initLang() {
+  const saved = localStorage.getItem('pdflow_lang') ||
+    (navigator.language.startsWith('ar') ? 'ar' :
+     navigator.language.startsWith('fr') ? 'fr' : 'en');
+  await loadLang(saved);
+}
 let sel = null, allFiles = [], currentUser = null, currentRole = null, currentToken = null;
 
 // ══════════════════════════════════════
@@ -660,7 +813,9 @@ function arreterPolling() {
 }
 
 // Vérifier session existante
-window.onload = () => {
+window.onload = async () => {
+  initTheme();
+  await initLang();
   const token = localStorage.getItem('pdflow_token');
   const user  = localStorage.getItem('pdflow_user');
   const role  = localStorage.getItem('pdflow_role');

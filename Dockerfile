@@ -5,6 +5,7 @@ WORKDIR /app
 COPY lib/ /app/lib/
 COPY src/ /app/src/
 COPY web/ /app/web/
+COPY web/i18n/ /app/web/i18n/
 
 RUN mkdir -p /pdfs /app/bin
 

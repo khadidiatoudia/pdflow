@@ -22,6 +22,8 @@ public class StartServerWeb {
             try {
                 if (path.equals("/") || path.equals("/index.html")) {
                     servirHTML(exchange);
+                } else if (path.startsWith("/i18n/")) {
+                    servirI18n(exchange, path);
                 } else if (path.startsWith("/api/auth/")) {
                     traiterAuth(exchange);
                 } else if (path.startsWith("/api/admin/")) {
@@ -429,6 +431,18 @@ public class StartServerWeb {
         if (!f.exists()) { repondre(ex, 404, "text/plain", "index.html introuvable"); return; }
         byte[] bytes = Files.readAllBytes(f.toPath());
         ex.getResponseHeaders().add("Content-Type", "text/html; charset=utf-8");
+        ex.sendResponseHeaders(200, bytes.length);
+        ex.getResponseBody().write(bytes);
+        ex.getResponseBody().close();
+    }
+
+    private static void servirI18n(HttpExchange ex, String path) throws IOException {
+        File f = new File("/app/web" + path);
+        if (!f.exists()) f = new File("web" + path);
+        if (!f.exists()) { repondre(ex, 404, "application/json", "{}"); return; }
+        byte[] bytes = Files.readAllBytes(f.toPath());
+        ex.getResponseHeaders().add("Content-Type", "application/json; charset=utf-8");
+        ex.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
         ex.sendResponseHeaders(200, bytes.length);
         ex.getResponseBody().write(bytes);
         ex.getResponseBody().close();
