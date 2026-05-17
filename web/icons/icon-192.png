@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">
+  <defs>
+    <linearGradient id="g" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#E85D2F"/>
+      <stop offset="100%" style="stop-color:#7C3AED"/>
+    </linearGradient>
+  </defs>
+  <rect width="192" height="192" rx="38.400000000000006" ry="38.400000000000006" fill="url(#g)"/>
+  <text x="96.0" y="86.4" font-family="Arial,sans-serif" font-weight="bold" 
+        font-size="61.44" fill="white" text-anchor="middle" dominant-baseline="middle">PDF</text>
+  <text x="96.0" y="138.24" font-family="Arial,sans-serif" 
+        font-size="30.72" fill="rgba(255,255,255,0.85)" text-anchor="middle" dominant-baseline="middle">flow</text>
+</svg>

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head><title>Generate Icons</title></head>
+<body>
+<canvas id="c"></canvas>
+<div id="links"></div>
+<script>
+const sizes = [72,96,128,144,152,192,384,512];
+const links = document.getElementById('links');
+
+sizes.forEach(size => {
+  const canvas = document.createElement('canvas');
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  
+  // Background gradient
+  const grad = ctx.createLinearGradient(0,0,size,size);
+  grad.addColorStop(0, '#E85D2F');
+  grad.addColorStop(1, '#7C3AED');
+  ctx.fillStyle = grad;
+  
+  // Rounded rect
+  const r = size * 0.2;
+  ctx.beginPath();
+  ctx.moveTo(r,0); ctx.lineTo(size-r,0);
+  ctx.arcTo(size,0,size,r,r);
+  ctx.lineTo(size,size-r);
+  ctx.arcTo(size,size,size-r,size,r);
+  ctx.lineTo(r,size);
+  ctx.arcTo(0,size,0,size-r,r);
+  ctx.lineTo(0,r);
+  ctx.arcTo(0,0,r,0,r);
+  ctx.closePath();
+  ctx.fill();
+  
+  // PDF icon
+  ctx.fillStyle = 'white';
+  ctx.font = `bold ${size*0.35}px Arial`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('PDF', size/2, size*0.42);
+  
+  // Flow text
+  ctx.font = `${size*0.18}px Arial`;
+  ctx.fillStyle = 'rgba(255,255,255,0.8)';
+  ctx.fillText('flow', size/2, size*0.68);
+  
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `icon-${size}.png`;
+    a.textContent = `Download icon-${size}.png`;
+    a.style.display = 'block';
+    links.appendChild(a);
+    a.click();
+  }, 'image/png');
+});
+</script>
+</body>
+</html>

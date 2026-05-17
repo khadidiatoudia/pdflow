@@ -4,6 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PDFlow — Gestionnaire PDF</title>
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<meta name="theme-color" content="#E85D2F">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="PDFlow">
+<link rel="apple-touch-icon" href="/icons/icon-192.png">
+<meta name="description" content="Gérez vos documents PDF en toute simplicité">
 <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
@@ -278,6 +287,9 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
         <button onclick="setLang('ar')" id="btn-ar" style="background:none;border:none;cursor:pointer;font-size:18px;opacity:0.5" title="العربية">🇸🇦</button>
       </div>
       <button onclick="toggleTheme()" id="themeBtn" style="background:none;border:none;cursor:pointer;font-size:20px;padding:4px 8px" title="Thème">🌙</button>
+      <button id="installBtn" onclick="installPWA()" style="display:none;align-items:center;gap:6px;background:var(--accent);color:white;border:none;border-radius:100px;padding:6px 14px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">
+        📲 Installer
+      </button>
       <div class="user-avatar" id="userAvatar">?</div>
       <span class="user-name" id="userName"></span>
       <span id="userRoleBadge" style="display:none"></span>
@@ -530,6 +542,9 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
 
 </div><!-- fin #app -->
 
+<div id="offlineBanner" style="display:none;position:fixed;top:64px;left:0;right:0;background:#F5A623;color:#1A1714;text-align:center;padding:8px;font-size:13px;font-weight:600;z-index:999">
+  ⚠️ Vous êtes hors ligne. Certaines fonctionnalités sont indisponibles.
+</div>
 <div id="logBar"><div class="log-dot"></div><span id="logTxt">Prêt</span></div>
 <div id="toast"></div>
 
@@ -813,6 +828,43 @@ function arreterPolling() {
 }
 
 // Vérifier session existante
+// ══════════════════════════════════════
+//  PWA - Service Worker + Installation
+// ══════════════════════════════════════
+let deferredPrompt = null;
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').then(reg => {
+      console.log('[PWA] Service Worker enregistré:', reg.scope);
+    }).catch(err => console.log('[PWA] Erreur SW:', err));
+  });
+}
+
+// Capturer l'événement d'installation
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  // Afficher le bouton d'installation
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'flex';
+});
+
+// Après installation
+window.addEventListener('appinstalled', () => {
+  deferredPrompt = null;
+  const btn = document.getElementById('installBtn');
+  if (btn) btn.style.display = 'none';
+  toast('✅ PDFlow installé sur votre appareil !', 's');
+});
+
+async function installPWA() {
+  if (!deferredPrompt) return;
+  deferredPrompt.prompt();
+  const result = await deferredPrompt.userChoice;
+  deferredPrompt = null;
+}
+
 window.onload = async () => {
   initTheme();
   await initLang();
@@ -1298,6 +1350,16 @@ async function supprimerFichierConfirm() {
     await rafraichir();
   } catch(e) { toast('❌ ' + e.message, 'e'); }
 }
+
+// Détection hors ligne
+window.addEventListener('online', () => {
+  document.getElementById('offlineBanner').style.display = 'none';
+  toast('✅ Connexion rétablie', 's');
+});
+window.addEventListener('offline', () => {
+  document.getElementById('offlineBanner').style.display = 'block';
+  toast('⚠️ Vous êtes hors ligne', 'e');
+});
 
 function log(msg){document.getElementById('logTxt').textContent=msg;}
 function toast(msg,type='i'){

@@ -24,6 +24,15 @@ public class StartServerWeb {
                     servirHTML(exchange);
                 } else if (path.startsWith("/i18n/")) {
                     servirI18n(exchange, path);
+                } else if (path.equals("/manifest.json")) {
+                    servirStatique(exchange, "/app/web/manifest.json", "web/manifest.json", "application/json");
+                } else if (path.equals("/sw.js")) {
+                    servirStatique(exchange, "/app/web/sw.js", "web/sw.js", "application/javascript");
+                } else if (path.equals("/favicon.svg")) {
+                    servirStatique(exchange, "/app/web/favicon.svg", "web/favicon.svg", "image/svg+xml");
+                } else if (path.startsWith("/icons/")) {
+                    String iconPath = path.substring(1);
+                    servirStatique(exchange, "/app/web/" + iconPath, "web/" + iconPath, "image/svg+xml");
                 } else if (path.startsWith("/api/auth/")) {
                     traiterAuth(exchange);
                 } else if (path.startsWith("/api/admin/")) {
@@ -431,6 +440,18 @@ public class StartServerWeb {
         if (!f.exists()) { repondre(ex, 404, "text/plain", "index.html introuvable"); return; }
         byte[] bytes = Files.readAllBytes(f.toPath());
         ex.getResponseHeaders().add("Content-Type", "text/html; charset=utf-8");
+        ex.sendResponseHeaders(200, bytes.length);
+        ex.getResponseBody().write(bytes);
+        ex.getResponseBody().close();
+    }
+
+    private static void servirStatique(HttpExchange ex, String path1, String path2, String ct) throws IOException {
+        File f = new File(path1);
+        if (!f.exists()) f = new File(path2);
+        if (!f.exists()) { repondre(ex, 404, "text/plain", "Fichier introuvable"); return; }
+        byte[] bytes = Files.readAllBytes(f.toPath());
+        ex.getResponseHeaders().add("Content-Type", ct + "; charset=utf-8");
+        ex.getResponseHeaders().add("Access-Control-Allow-Origin", "*");
         ex.sendResponseHeaders(200, bytes.length);
         ex.getResponseBody().write(bytes);
         ex.getResponseBody().close();

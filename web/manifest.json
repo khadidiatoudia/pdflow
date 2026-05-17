@@ -1,0 +1,80 @@
+{
+  "name": "PDFlow — Gestionnaire PDF",
+  "short_name": "PDFlow",
+  "description": "Gérez vos documents PDF en toute simplicité",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F5F2EE",
+  "theme_color": "#E85D2F",
+  "orientation": "portrait-primary",
+  "lang": "fr",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    {
+      "src": "/icons/icon-72.png",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-96.png",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-128.png",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-152.png",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Créer un PDF",
+      "short_name": "Créer",
+      "description": "Créer un nouveau document PDF",
+      "url": "/?action=creer",
+      "icons": [{"src": "/icons/icon-96.png", "sizes": "96x96"}]
+    },
+    {
+      "name": "Mes fichiers",
+      "short_name": "Fichiers",
+      "description": "Voir mes fichiers PDF",
+      "url": "/?action=files",
+      "icons": [{"src": "/icons/icon-96.png", "sizes": "96x96"}]
+    }
+  ],
+  "screenshots": [],
+  "prefer_related_applications": false
+}
