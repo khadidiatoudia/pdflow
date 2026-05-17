@@ -51,6 +51,18 @@ public class AuthManager {
             ")"
         );
         st.execute(
+            "CREATE TABLE IF NOT EXISTS historique (" +
+            "  id SERIAL PRIMARY KEY," +
+            "  username VARCHAR(100) NOT NULL," +
+            "  operation VARCHAR(100) NOT NULL," +
+            "  fichier_source VARCHAR(255)," +
+            "  fichier_resultat VARCHAR(255)," +
+            "  statut VARCHAR(20) DEFAULT 'succes'," +
+            "  details TEXT," +
+            "  created_at TIMESTAMP DEFAULT NOW()" +
+            ")"
+        );
+        st.execute(
             "CREATE TABLE IF NOT EXISTS fichiers (" +
             "  id SERIAL PRIMARY KEY," +
             "  username VARCHAR(100) NOT NULL," +
@@ -238,6 +250,78 @@ public class AuthManager {
         ps.setString(1, username); ps.executeUpdate(); ps.close();
         PreparedStatement ps2 = conn.prepareStatement("DELETE FROM sessions WHERE username=?");
         ps2.setString(1, username); ps2.executeUpdate(); ps2.close();
+    }
+
+    // ══════════════════════════════════════
+    //  Historique des opérations
+    // ══════════════════════════════════════
+    public static void ajouterHistorique(String username, String operation, String fichierSource, String fichierResultat, String statut, String details) {
+        try {
+            PreparedStatement ps = conn.prepareStatement(
+                "INSERT INTO historique (username, operation, fichier_source, fichier_resultat, statut, details) VALUES (?,?,?,?,?,?)"
+            );
+            ps.setString(1, username);
+            ps.setString(2, operation);
+            ps.setString(3, fichierSource);
+            ps.setString(4, fichierResultat);
+            ps.setString(5, statut);
+            ps.setString(6, details);
+            ps.executeUpdate();
+            ps.close();
+        } catch (Exception e) {
+            System.err.println("Erreur historique : " + e.getMessage());
+        }
+    }
+
+    public static List<Map<String,String>> getHistorique(String username, int limit) throws Exception {
+        List<Map<String,String>> liste = new ArrayList<>();
+        PreparedStatement ps = conn.prepareStatement(
+            "SELECT operation, fichier_source, fichier_resultat, statut, details, created_at " +
+            "FROM historique WHERE username=? ORDER BY created_at DESC LIMIT ?"
+        );
+        ps.setString(1, username);
+        ps.setInt(2, limit);
+        ResultSet rs = ps.executeQuery();
+        while (rs.next()) {
+            Map<String,String> h = new HashMap<>();
+            h.put("operation", rs.getString("operation"));
+            h.put("fichierSource", rs.getString("fichier_source") != null ? rs.getString("fichier_source") : "");
+            h.put("fichierResultat", rs.getString("fichier_resultat") != null ? rs.getString("fichier_resultat") : "");
+            h.put("statut", rs.getString("statut"));
+            h.put("details", rs.getString("details") != null ? rs.getString("details") : "");
+            h.put("date", rs.getString("created_at") != null ? rs.getString("created_at").substring(0,16) : "");
+            liste.add(h);
+        }
+        rs.close(); ps.close();
+        return liste;
+    }
+
+    public static List<Map<String,String>> getToutHistorique(int limit) throws Exception {
+        List<Map<String,String>> liste = new ArrayList<>();
+        PreparedStatement ps = conn.prepareStatement(
+            "SELECT username, operation, fichier_source, fichier_resultat, statut, details, created_at " +
+            "FROM historique ORDER BY created_at DESC LIMIT ?"
+        );
+        ps.setInt(1, limit);
+        ResultSet rs = ps.executeQuery();
+        while (rs.next()) {
+            Map<String,String> h = new HashMap<>();
+            h.put("username", rs.getString("username"));
+            h.put("operation", rs.getString("operation"));
+            h.put("fichierSource", rs.getString("fichier_source") != null ? rs.getString("fichier_source") : "");
+            h.put("fichierResultat", rs.getString("fichier_resultat") != null ? rs.getString("fichier_resultat") : "");
+            h.put("statut", rs.getString("statut"));
+            h.put("details", rs.getString("details") != null ? rs.getString("details") : "");
+            h.put("date", rs.getString("created_at") != null ? rs.getString("created_at").substring(0,16) : "");
+            liste.add(h);
+        }
+        rs.close(); ps.close();
+        return liste;
+    }
+
+    public static void viderHistorique(String username) throws Exception {
+        PreparedStatement ps = conn.prepareStatement("DELETE FROM historique WHERE username=?");
+        ps.setString(1, username); ps.executeUpdate(); ps.close();
     }
 
     // ══════════════════════════════════════

@@ -223,6 +223,25 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
 .empty h3{font-family:'Syne',sans-serif;font-size:17px;font-weight:700;color:var(--ink);margin-bottom:6px}
 .empty p{font-size:13px}
 
+/* ── HISTORIQUE TIMELINE ── */
+.hist-item{display:flex;gap:16px;padding:16px 0;border-bottom:1px solid var(--border);align-items:flex-start}
+.hist-item:last-child{border-bottom:none}
+.hist-icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.hist-icon.succes{background:#EDFAF4}
+.hist-icon.erreur{background:#FEF0EE}
+.hist-content{flex:1}
+.hist-op{font-weight:600;font-size:14px;color:var(--ink);margin-bottom:4px}
+.hist-files{font-size:12px;color:var(--ink2);margin-bottom:4px}
+.hist-meta{display:flex;gap:12px;align-items:center}
+.hist-date{font-size:11px;color:var(--ink3)}
+.hist-details{font-size:11px;color:var(--ink2);background:var(--bg2);padding:2px 8px;border-radius:100px}
+.hist-statut{font-size:11px;font-weight:600;padding:2px 8px;border-radius:100px}
+.hist-statut.succes{background:#EDFAF4;color:#1a7a4a}
+.hist-statut.erreur{background:#FEF0EE;color:#C0392B}
+.hist-stat-card{background:#fff;border-radius:var(--r-sm);padding:14px 16px;border-left:3px solid var(--accent);box-shadow:var(--shadow)}
+.hist-stat-card .lbl{font-size:10px;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;font-weight:600;margin-bottom:4px}
+.hist-stat-card .val{font-size:22px;font-weight:800;font-family:'Syne',sans-serif;color:var(--ink)}
+
 ::-webkit-scrollbar{width:5px;height:5px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
 @keyframes fu{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 .hero{animation:fu .6s ease both}
@@ -313,6 +332,8 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
     <div class="hero-btns">
       <button class="btn-hero btn-hero-p" id="startBtn" onclick="goTo('tools')">🚀 Commencer</button>
       <button class="btn-hero btn-hero-s" id="myFilesBtn" onclick="goTo('files')">📁 Mes fichiers</button>
+      <button class="btn-hero btn-hero-s" onclick="goTo('historique')" style="padding:10px 20px;font-size:14px">📜 Historique</button>
+      <button class="btn-hero btn-hero-s" onclick="goTo('historique')" style="padding:10px 20px;font-size:14px">📜 Historique</button>
     </div>
   </div>
   <div class="upload-hero" id="uploadHero" onclick="document.getElementById('fi').click()">
@@ -369,6 +390,8 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
   <div class="admin-tabs">
     <button class="admin-tab active" onclick="showAdminTab('users')">👥 Utilisateurs</button>
     <button class="admin-tab" onclick="showAdminTab('fichiers')">📄 Tous les fichiers</button>
+    <button class="admin-tab" onclick="showAdminTab('adminHist')">📜 Historique global</button>
+    <button class="admin-tab" onclick="showAdminTab('adminHist')">📜 Historique global</button>
   </div>
 
   <!-- Tab utilisateurs -->
@@ -384,6 +407,22 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
         <tbody id="userTableBody"></tbody>
       </table>
     </div>
+  </div>
+
+  <!-- Tab historique admin -->
+  <div id="adminTabAdminHist" style="display:none">
+    <div style="margin-bottom:16px;display:flex;justify-content:flex-end">
+      <button class="btn btn-p btn-sm" onclick="chargerHistoriqueAdmin()">🔄 Actualiser</button>
+    </div>
+    <div id="adminHistTimeline"></div>
+  </div>
+
+  <!-- Tab historique admin -->
+  <div id="adminTabAdminHist" style="display:none">
+    <div style="margin-bottom:16px;display:flex;justify-content:flex-end">
+      <button class="btn btn-p btn-sm" onclick="chargerHistoriqueAdmin()">🔄 Actualiser</button>
+    </div>
+    <div id="adminHistTimeline"></div>
   </div>
 
   <!-- Tab fichiers admin -->
@@ -900,7 +939,9 @@ function showAdminTab(tab) {
   event.currentTarget.classList.add('active');
   document.getElementById('adminTabUsers').style.display = tab === 'users' ? 'block' : 'none';
   document.getElementById('adminTabFichiers').style.display = tab === 'fichiers' ? 'block' : 'none';
+  document.getElementById('adminTabAdminHist').style.display = tab === 'adminHist' ? 'block' : 'none';
   if (tab === 'fichiers') chargerFichiersAdmin();
+  if (tab === 'adminHist') chargerHistoriqueAdmin();
 }
 
 async function rafraichirAdmin() {
@@ -1360,6 +1401,124 @@ window.addEventListener('offline', () => {
   document.getElementById('offlineBanner').style.display = 'block';
   toast('⚠️ Vous êtes hors ligne', 'e');
 });
+
+// ══════════════════════════════════════
+//  HISTORIQUE
+// ══════════════════════════════════════
+let allHistorique = [];
+
+const opIcons = {
+  'Création PDF': '✏️', 'Fusion PDF': '🔗', 'Extraction pages': '✂️',
+  'Extraction texte': '📝', 'Suppression pages': '🗑️', 'Rotation pages': '🔄',
+  'Protection PDF': '🔒', 'Numérotation': '🔢', 'Upload': '⬆️',
+  'Téléchargement': '⬇️', 'Suppression fichier': '🗂️', 'Ajout texte': '🖊️',
+  'Conversion images': '🖼️'
+};
+
+async function chargerHistorique() {
+  try {
+    const r = await fetch(`${API}/historique?limit=100`, {headers:{Authorization:'Bearer '+currentToken}});
+    allHistorique = await r.json();
+    if (allHistorique.erreur) return;
+    afficherHistorique(allHistorique);
+    afficherStatsHist(allHistorique);
+    log(`📜 ${allHistorique.length} opération(s) chargée(s)`);
+  } catch(e) { log('❌ '+e.message); }
+}
+
+function filtrerHistorique() {
+  const opFilter = document.getElementById('histFilter').value;
+  const statFilter = document.getElementById('histStatut').value;
+  let filtered = allHistorique;
+  if (opFilter) filtered = filtered.filter(h => h.operation === opFilter);
+  if (statFilter) filtered = filtered.filter(h => h.statut === statFilter);
+  afficherHistorique(filtered);
+}
+
+function afficherHistorique(hist) {
+  const container = document.getElementById('histTimeline');
+  if (!hist.length) {
+    container.innerHTML = '<div class="empty"><div class="ei">📜</div><h3>Aucune opération</h3><p>Effectuez des opérations PDF pour les voir ici</p></div>';
+    return;
+  }
+  container.innerHTML = hist.map(h => `
+    <div class="hist-item">
+      <div class="hist-icon ${h.statut}">${opIcons[h.operation] || '📄'}</div>
+      <div class="hist-content">
+        <div class="hist-op">${h.operation}</div>
+        <div class="hist-files">
+          ${h.fichierSource ? '📂 ' + h.fichierSource : ''}
+          ${h.fichierSource && h.fichierResultat ? ' → ' : ''}
+          ${h.fichierResultat ? '📄 ' + h.fichierResultat : ''}
+        </div>
+        <div class="hist-meta">
+          <span class="hist-date">🕐 ${h.date}</span>
+          ${h.details ? `<span class="hist-details">${h.details}</span>` : ''}
+          <span class="hist-statut ${h.statut}">${h.statut === 'succes' ? '✅ Succès' : '❌ Erreur'}</span>
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+function afficherStatsHist(hist) {
+  const total = hist.length;
+  const succes = hist.filter(h => h.statut === 'succes').length;
+  const erreurs = hist.filter(h => h.statut === 'erreur').length;
+  const uploads = hist.filter(h => h.operation === 'Upload').length;
+  const downloads = hist.filter(h => h.operation === 'Téléchargement').length;
+
+  document.getElementById('histStats').innerHTML = `
+    <div class="hist-stat-card"><div class="lbl">Total</div><div class="val">${total}</div></div>
+    <div class="hist-stat-card" style="border-color:var(--green)"><div class="lbl">Succès</div><div class="val" style="color:var(--green)">${succes}</div></div>
+    <div class="hist-stat-card" style="border-color:var(--accent)"><div class="lbl">Erreurs</div><div class="val" style="color:var(--accent)">${erreurs}</div></div>
+    <div class="hist-stat-card" style="border-color:var(--blue)"><div class="lbl">Uploads</div><div class="val" style="color:var(--blue)">${uploads}</div></div>
+    <div class="hist-stat-card" style="border-color:var(--purple)"><div class="lbl">Téléchargements</div><div class="val" style="color:var(--purple)">${downloads}</div></div>
+  `;
+}
+
+async function viderHistorique() {
+  confirmCallback = async () => {
+    try {
+      await fetch(`${API}/viderHistorique`, {method:'POST', headers:authHeaders()});
+      allHistorique = [];
+      afficherHistorique([]);
+      afficherStatsHist([]);
+      toast('✅ Historique vidé', 's');
+    } catch(e) { toast('❌ '+e.message, 'e'); }
+  };
+  document.getElementById('confirmMsg').textContent = 'Vider tout l'historique ?';
+  document.getElementById('confirmIcon').textContent = '🗑️';
+  document.getElementById('confirmOv').classList.add('on');
+  document.getElementById('confirmOk').onclick = () => { const cb = confirmCallback; closeConfirm(); if(cb) cb(); };
+}
+
+async function chargerHistoriqueAdmin() {
+  try {
+    const r = await fetch(`${API}/admin/toutHistorique`, {headers:{Authorization:'Bearer '+currentToken}});
+    const hist = await r.json();
+    const container = document.getElementById('adminHistTimeline');
+    if (!hist.length) {
+      container.innerHTML = '<div class="empty"><div class="ei">📜</div><h3>Aucune opération</h3></div>';
+      return;
+    }
+    container.innerHTML = hist.map(h => `
+      <div class="hist-item">
+        <div class="hist-icon ${h.statut}">${opIcons[h.operation] || '📄'}</div>
+        <div class="hist-content">
+          <div class="hist-op">${h.operation} <span style="color:var(--blue);font-size:12px">— ${h.username}</span></div>
+          <div class="hist-files">
+            ${h.fichierSource ? '📂 ' + h.fichierSource : ''}
+            ${h.fichierSource && h.fichierResultat ? ' → ' : ''}
+            ${h.fichierResultat ? '📄 ' + h.fichierResultat : ''}
+          </div>
+          <div class="hist-meta">
+            <span class="hist-date">🕐 ${h.date}</span>
+            <span class="hist-statut ${h.statut}">${h.statut === 'succes' ? '✅ Succès' : '❌ Erreur'}</span>
+          </div>
+        </div>
+      </div>`).join('');
+  } catch(e) { toast('❌ '+e.message, 'e'); }
+}
 
 function log(msg){document.getElementById('logTxt').textContent=msg;}
 function toast(msg,type='i'){
