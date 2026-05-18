@@ -174,15 +174,10 @@ public class StartServerWeb {
                     for (int i=0; i<toutH.size(); i++) {
                         Map<String,String> h = toutH.get(i);
                         if (i>0) sbTH.append(",");
-                        sbTH.append("{"username":"").append(esc(h.get("username"))).append("",")
-                           .append(""operation":"").append(esc(h.get("operation"))).append("",")
-                           .append(""fichierSource":"").append(esc(h.get("fichierSource"))).append("",")
-                           .append(""fichierResultat":"").append(esc(h.get("fichierResultat"))).append("",")
-                           .append(""statut":"").append(esc(h.get("statut"))).append("",")
-                           .append(""date":"").append(esc(h.get("date"))).append(""}");
-                   }
-                   json = sbTH.append("]").toString();
-                   break;
+                        sbTH.append(histToJson(h, true));
+                    }
+                    json = sbTH.append("]").toString();
+                    break;
                 }
 
                 case "fichiersTous": {
@@ -552,6 +547,25 @@ public class StartServerWeb {
             sb.append("\"").append(esc(arr[i])).append("\"");
         }
         return sb.append("]").toString();
+    }
+
+    private static String histToJson(Map<String,String> h, boolean withUser) {
+        StringBuilder sb = new StringBuilder("{");
+        if (withUser) {
+            sb.append(jf("username", h.get("username"))).append(",");
+        }
+        sb.append(jf("operation", h.get("operation"))).append(",");
+        sb.append(jf("fichierSource", h.get("fichierSource"))).append(",");
+        sb.append(jf("fichierResultat", h.get("fichierResultat"))).append(",");
+        sb.append(jf("statut", h.get("statut"))).append(",");
+        if (h.containsKey("details")) sb.append(jf("details", h.get("details"))).append(",");
+        sb.append(jf("date", h.get("date")));
+        sb.append("}");
+        return sb.toString();
+    }
+
+    private static String jf(String key, String val) {
+        return "\"" + key + "\":\"" + esc(val == null ? "" : val) + "\"";
     }
 
     private static String esc(String s) {
