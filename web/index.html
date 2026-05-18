@@ -263,9 +263,9 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
     <div class="auth-form">
       <div class="fg"><label class="fl">Nom d'utilisateur</label><input type="text" class="fi" id="loginUser" placeholder="votre_nom" autocomplete="username"></div>
       <div class="fg"><label class="fl">Mot de passe</label><input type="password" class="fi" id="loginPass" placeholder="••••••••" autocomplete="current-password"></div>
-      <button class="auth-btn" id="loginBtn" onclick="login()">Se connecter →</button>
+      <button class="auth-btn" id="loginBtn">Se connecter →</button>
     </div>
-    <div class="auth-switch" id="noAccount">Pas encore de compte ? <a onclick="showRegister()" id="switchToRegister" style="color:var(--accent);cursor:pointer;font-weight:600;text-decoration:underline">Créer un compte</a></div>
+    <div class="auth-switch" id="noAccount">Pas encore de compte ? <a id="switchToRegister" style="color:var(--accent);cursor:pointer;font-weight:600;text-decoration:underline">Créer un compte</a></div>
   </div>
 </div>
 
@@ -283,9 +283,9 @@ textarea.fi{resize:vertical;min-height:120px;line-height:1.6}
       <div class="fg"><label class="fl">Email</label><input type="email" class="fi" id="regEmail" placeholder="vous@exemple.com"></div>
       <div class="fg"><label class="fl">Mot de passe</label><input type="password" class="fi" id="regPass" placeholder="Min. 6 caractères"></div>
       <div class="fg"><label class="fl">Confirmer le mot de passe</label><input type="password" class="fi" id="regPass2" placeholder="••••••••"></div>
-      <button class="auth-btn" id="registerBtn" onclick="register()">Créer mon compte →</button>
+      <button class="auth-btn" id="registerBtn">Créer mon compte →</button>
     </div>
-    <div class="auth-switch" id="haveAccount">Déjà un compte ? <a onclick="showLogin()" id="switchToLogin">Se connecter</a></div>
+    <div class="auth-switch" id="haveAccount">Déjà un compte ? <a id="switchToLogin" style="color:var(--accent);cursor:pointer;font-weight:600;text-decoration:underline">Se connecter</a></div>
   </div>
 </div>
 
@@ -719,6 +719,18 @@ async function initLang() {
      navigator.language.startsWith('fr') ? 'fr' : 'en');
   await loadLang(saved);
 }
+
+// Attacher les événements auth
+function attachAuthEvents() {
+  const r = document.getElementById('switchToRegister');
+  const l = document.getElementById('switchToLogin');
+  const lb = document.getElementById('loginBtn');
+  const rb = document.getElementById('registerBtn');
+  if (r) r.addEventListener('click', showRegister);
+  if (l) l.addEventListener('click', showLogin);
+  if (lb) lb.addEventListener('click', login);
+  if (rb) rb.addEventListener('click', register);
+}
 let sel = null, allFiles = [], currentUser = null, currentRole = null, currentToken = null;
 
 // ══════════════════════════════════════
@@ -907,6 +919,7 @@ async function installPWA() {
 window.onload = async () => {
   initTheme();
   await initLang();
+  attachAuthEvents();
   const token = localStorage.getItem('pdflow_token');
   const user  = localStorage.getItem('pdflow_user');
   const role  = localStorage.getItem('pdflow_role');
