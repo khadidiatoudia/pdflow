@@ -175,14 +175,14 @@ public class StartServerWeb {
                         Map<String,String> h = toutH.get(i);
                         if (i>0) sbTH.append(",");
                         sbTH.append("{"username":"").append(esc(h.get("username"))).append("",")
-                            .append(""operation":"").append(esc(h.get("operation"))).append("",")
-                            .append(""fichierSource":"").append(esc(h.get("fichierSource"))).append("",")
-                            .append(""fichierResultat":"").append(esc(h.get("fichierResultat"))).append("",")
-                            .append(""statut":"").append(esc(h.get("statut"))).append("",")
-                            .append(""date":"").append(esc(h.get("date"))).append(""}");
-                    }
-                    json = sbTH.append("]").toString();
-                    break;
+                           .append(""operation":"").append(esc(h.get("operation"))).append("",")
+                           .append(""fichierSource":"").append(esc(h.get("fichierSource"))).append("",")
+                           .append(""fichierResultat":"").append(esc(h.get("fichierResultat"))).append("",")
+                           .append(""statut":"").append(esc(h.get("statut"))).append("",")
+                           .append(""date":"").append(esc(h.get("date"))).append(""}");
+                   }
+                   json = sbTH.append("]").toString();
+                   break;
                 }
 
                 case "fichiersTous": {
