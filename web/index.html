@@ -14,6 +14,15 @@
   --r:16px;--r-sm:10px;
 }
 html{scroll-behavior:smooth}
+[data-theme="dark"]{
+  --bg:#0f0f1a;--bg2:#1a1a2e;--surface:#16213e;--ink:#e8e6e3;--ink2:#9994a0;--ink3:#5a5668;
+  --border:#2d2b3d;--shadow:0 2px 20px rgba(0,0,0,.3);--shadow-lg:0 8px 60px rgba(0,0,0,.5);
+}
+[data-theme="dark"] .auth-card,[data-theme="dark"] .modal,[data-theme="dark"] .confirm-box,
+[data-theme="dark"] .tool-card,[data-theme="dark"] .file-card{background:#1a1a2e}
+[data-theme="dark"] .fi,[data-theme="dark"] .auth-form .fi{background:#0f0f1a;border-color:#2d2b3d;color:#e8e6e3}
+[data-theme="dark"] header{background:rgba(15,15,26,.9)}
+[data-theme="dark"] #logBar{background:#0f0f1a}
 body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;overflow-x:hidden}
 
 /* ── AUTH SCREENS ── */
@@ -661,6 +670,7 @@ function arreterPolling() {
 
 // Vérifier session existante
 window.onload = () => {
+  initTheme();
   const token = localStorage.getItem('pdflow_token');
   const user  = localStorage.getItem('pdflow_user');
   const role  = localStorage.getItem('pdflow_role');
@@ -1142,6 +1152,21 @@ async function supprimerFichierConfirm() {
     sel = null;
     await rafraichir();
   } catch(e) { toast('❌ ' + e.message, 'e'); }
+}
+
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.getAttribute('data-theme') === 'dark';
+  html.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  document.getElementById('themeBtn').textContent = isDark ? '🌙' : '☀️';
+  localStorage.setItem('pdflow_theme', isDark ? 'light' : 'dark');
+}
+
+function initTheme() {
+  const saved = localStorage.getItem('pdflow_theme') || 'light';
+  document.documentElement.setAttribute('data-theme', saved);
+  const btn = document.getElementById('themeBtn');
+  if (btn) btn.textContent = saved === 'dark' ? '☀️' : '🌙';
 }
 
 function log(msg){document.getElementById('logTxt').textContent=msg;}
